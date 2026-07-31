@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="mod/aiactivities/db" VERSION="20260211" COMMENT="XMLDB file for AI Learning Activities module"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
+  <TABLES>
+    <TABLE NAME="aiactivities" COMMENT="AI Learning Activities instances">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="course" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Course ID"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Activity name"/>
+        <FIELD NAME="intro" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Activity introduction"/>
+        <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="grade" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="100" SEQUENCE="false" COMMENT="Maximum grade"/>
+        <FIELD NAME="content" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Pasted learning content"/>
+        <FIELD NAME="language" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="en-AU" SEQUENCE="false" COMMENT="Language code"/>
+        <FIELD NAME="activitycount" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="5" SEQUENCE="false" COMMENT="Number of activities to generate"/>
+        <FIELD NAME="activitiesjson" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON: generated activity data"/>
+        <FIELD NAME="completionallcorrect" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Complete when all activities correct"/>
+        <FIELD NAME="voiceoverenabled" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Voiceover narration enabled"/>
+        <FIELD NAME="voicegender" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="female" SEQUENCE="false" COMMENT="Voice gender preference"/>
+        <FIELD NAME="voiceid" TYPE="char" LENGTH="50" NOTNULL="true" DEFAULT="Aoede" SEQUENCE="false" COMMENT="Voice ID for TTS"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course" UNIQUE="false" FIELDS="course"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="aiactivities_attempts" COMMENT="User attempts/progress for AI Learning Activities">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="aiactivitiesid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="progressjson" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON: per-activity progress and answers"/>
+        <FIELD NAME="currentactivity" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Current activity index"/>
+        <FIELD NAME="completedcount" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="totalcount" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="score" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="status" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="0=in progress, 1=completed"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="aiactivitiesid" TYPE="foreign" FIELDS="aiactivitiesid" REFTABLE="aiactivities" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+        <INDEX NAME="aiactivitiesid_userid" UNIQUE="false" FIELDS="aiactivitiesid, userid"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>
