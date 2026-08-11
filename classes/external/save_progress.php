@@ -31,9 +31,11 @@ use external_single_structure;
  * This mirrors the 'saveprogress' action in ajax.php and is registered as a
  * Moodle web service so that the service registry does not throw a "missing
  * externallib.php" error on plugin install/upgrade.
+ * @package    mod_aiactivities
+ * @copyright  2026 LMS-Labs
+ * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
  */
 class save_progress extends external_api {
-
     /**
      * Describes the input parameters.
      *
