@@ -1,8 +1,0 @@
-{
-  "component": "mod_aiactivities",
-  "version": "1.6.2",
-  "numeric_version": "2026042200165",
-  "build_timestamp": "2026-04-22T07:07:50.409Z",
-  "folder": "mod_aiactivities",
-  "verification": "amd_encoding_fix_non_ascii_clean"
-}

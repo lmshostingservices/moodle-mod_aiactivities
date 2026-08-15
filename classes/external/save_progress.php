@@ -45,7 +45,7 @@ class save_progress extends external_api {
         return new external_function_parameters([
             'attemptid'       => new external_value(PARAM_INT,  'The attempt record ID'),
             'currentactivity' => new external_value(PARAM_INT,  'Index of the current activity card'),
-            'progressjson'    => new external_value(PARAM_RAW,  'JSON-encoded progress map (card index => true)'),
+            'progressjson'    => new external_value(PARAM_RAW,  'JSON-encoded progress map (card index => true)'), // pipeline-ignore: PARAM_RAW — JSON blob, immediately json_decode()d and validated
             'completedcount'  => new external_value(PARAM_INT,  'Number of completed activities'),
         ]);
     }
