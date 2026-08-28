@@ -2,6 +2,22 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.7.1] - 2026-08-28
+
+Housekeeping only — no change to how the plugin behaves for teachers or students.
+
+### Changed
+- Request parameters that must stay raw (JSON payloads) now carry the release pipeline's
+  annotation, and the three parameters that never needed `PARAM_RAW` use `PARAM_TEXT` directly.
+- `index.php` checks `mod/aiactivities:view` before listing the activities in a course.
+- Restored `thirdpartylibs.xml`, declaring that the plugin bundles no third-party libraries.
+- Two scenario sector labels renamed for readability ("Vocational education and training",
+  "Camera monitoring"). The values sent to the generation service are unchanged: the vocabulary
+  now stores its canonical English value separately from its display label, so translating or
+  customising a label can no longer change what the service receives.
+- Multi-line calls now pass a named variable rather than an inline array literal, which reads
+  better and satisfies the release pipeline's style rule.
+
 ## [1.7.0] - 2026-08-28
 
 ### Security
