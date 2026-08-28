@@ -15,23 +15,34 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_aiactivities file.
+ * The course module viewed event.
  *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace mod_aiactivities\event;
 
-defined('MOODLE_INTERNAL') || die();
-
+/**
+ * Fired when an AI Learning Activities instance is viewed.
+ */
 class course_module_viewed extends \core\event\course_module_viewed {
+    /**
+     * Initialises the event data.
+     *
+     * @return void
+     */
     protected function init() {
         $this->data['objecttable'] = 'aiactivities';
         parent::init();
     }
 
+    /**
+     * Returns the mapping used when restoring the event.
+     *
+     * @return array The object id mapping.
+     */
     public static function get_objectid_mapping() {
         return ['db' => 'aiactivities', 'restore' => 'aiactivities'];
     }

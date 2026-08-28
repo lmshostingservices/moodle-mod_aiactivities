@@ -15,20 +15,27 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_aiactivities file.
+ * Custom completion rules for mod_aiactivities.
  *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace mod_aiactivities\completion;
 
 use core_completion\activity_custom_completion;
 
-defined('MOODLE_INTERNAL') || die();
-
+/**
+ * Reports the state of this module's custom completion rules.
+ */
 class custom_completion extends activity_custom_completion {
+    /**
+     * Returns the completion state for a rule.
+     *
+     * @param string $rule The rule to check.
+     * @return int COMPLETION_COMPLETE or COMPLETION_INCOMPLETE.
+     */
     public function get_state(string $rule): int {
         global $DB;
 
@@ -37,11 +44,12 @@ class custom_completion extends activity_custom_completion {
         $instance = $DB->get_record('aiactivities', ['id' => $this->cm->instance], '*', MUST_EXIST);
 
         if ($rule === 'completionallcorrect') {
-            $exists = $DB->record_exists('aiactivities_attempts', [
+            $conditions = [
                 'aiactivitiesid' => $instance->id,
                 'userid' => $this->userid,
                 'status' => 1,
-            ]);
+            ];
+            $exists = $DB->record_exists('aiactivities_attempts', $conditions);
 
             return $exists ? COMPLETION_COMPLETE : COMPLETION_INCOMPLETE;
         }
@@ -49,16 +57,31 @@ class custom_completion extends activity_custom_completion {
         return COMPLETION_INCOMPLETE;
     }
 
+    /**
+     * Returns the rules this module defines.
+     *
+     * @return string[] The rule names.
+     */
     public static function get_defined_custom_rules(): array {
         return ['completionallcorrect'];
     }
 
+    /**
+     * Returns the human readable description of each rule.
+     *
+     * @return array Rule name => description.
+     */
     public function get_custom_rule_descriptions(): array {
         return [
             'completionallcorrect' => get_string('completiondetail:completionallcorrect', 'mod_aiactivities'),
         ];
     }
 
+    /**
+     * Returns the order the rules are shown in.
+     *
+     * @return string[] The rule names in display order.
+     */
     public function get_sort_order(): array {
         return ['completionallcorrect'];
     }

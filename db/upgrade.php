@@ -15,19 +15,82 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Upgrade script for mod_aiactivities.
+ * Upgrade steps for mod_aiactivities.
  *
  * @package    mod_aiactivities
- * @copyright  2026 AI Grader
+ * @copyright  2026 LMS-Labs
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
-
+/**
+ * Runs the upgrade steps for this plugin.
+ *
+ * @param int $oldversion The version currently installed on the site.
+ * @return bool True on success.
+ */
 function xmldb_aiactivities_upgrade($oldversion) {
+    global $DB;
+
+    $dbman = $DB->get_manager();
+
     if ($oldversion < 2026072300) {
         upgrade_mod_savepoint(true, 2026072300, 'aiactivities');
     }
+
+    if ($oldversion < 2026082800) {
+        // The narration columns were introduced in release 1.6.0 without a
+        // matching upgrade step, so sites upgrading from an earlier release
+        // may still be missing them.
+        $table = new xmldb_table('aiactivities');
+
+        $field = new xmldb_field(
+            'voiceoverenabled',
+            XMLDB_TYPE_INTEGER,
+            '1',
+            null,
+            XMLDB_NOTNULL,
+            null,
+            '0',
+            'completionallcorrect'
+        );
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field(
+            'voicegender',
+            XMLDB_TYPE_CHAR,
+            '10',
+            null,
+            XMLDB_NOTNULL,
+            null,
+            'female',
+            'voiceoverenabled'
+        );
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field(
+            'voiceid',
+            XMLDB_TYPE_CHAR,
+            '50',
+            null,
+            XMLDB_NOTNULL,
+            null,
+            'Zephyr',
+            'voicegender'
+        );
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        } else {
+            // Release 1.6.5 changed the default voice, but the column default
+            // was left at the previous value.
+            $dbman->change_field_default($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2026082800, 'aiactivities');
+    }
+
     return true;
 }

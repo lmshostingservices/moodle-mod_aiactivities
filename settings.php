@@ -15,39 +15,34 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_aiactivities file.
+ * Administration settings for mod_aiactivities.
  *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 if ($hassiteconfig) {
-    $centralconfigurl = new moodle_url('/admin/settings.php', ['section' => 'local_aiconfig']);
     $centralconfiginstalled = file_exists($CFG->dirroot . '/local/aiconfig/version.php');
 
     if ($centralconfiginstalled) {
-        $settings->add(new admin_setting_heading(
-            'mod_aiactivities/centralconfig_notice',
-            '',
-            '<div style="padding: 12px; background: #ecfdf5; border: 1px solid #10b981; border-radius: 8px; margin-bottom: 16px;">' .
-            '<strong style="color: #047857;">AI Grader Central Config is installed.</strong><br>' .
-            'Site ID and API Key are managed centrally. ' .
-            '<a href="' . $centralconfigurl->out() . '">Configure Central Settings</a>' .
-            '</div>'
-        ));
+        $centralconfigurl = new moodle_url('/admin/settings.php', ['section' => 'local_aiconfig']);
+        $notice = get_string('centralconfig_installed', 'mod_aiactivities', $centralconfigurl->out());
+        $noticetype = 'success';
+        $fallbacknote = ' ' . get_string('centralconfig_fallback', 'mod_aiactivities');
     } else {
-        $settings->add(new admin_setting_heading(
-            'mod_aiactivities/centralconfig_notice',
-            '',
-            '<div style="padding: 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; margin-bottom: 16px;">' .
-            '<strong style="color: #b45309;">Recommended: Install AI Grader Central Config</strong><br>' .
-            'Configure Site ID and API Key once for all AI Grader plugins.' .
-            '</div>'
-        ));
+        $notice = get_string('centralconfig_recommended', 'mod_aiactivities');
+        $noticetype = 'warning';
+        $fallbacknote = '';
     }
+
+    $settings->add(new admin_setting_heading(
+        'mod_aiactivities/centralconfig_notice',
+        '',
+        html_writer::div($notice, 'alert alert-' . $noticetype)
+    ));
 
     $settings->add(new admin_setting_configtext(
         'mod_aiactivities/apiurl',
@@ -60,7 +55,7 @@ if ($hassiteconfig) {
     $settings->add(new admin_setting_configtext(
         'mod_aiactivities/siteid',
         get_string('siteid', 'mod_aiactivities'),
-        get_string('siteid_desc', 'mod_aiactivities') . ($centralconfiginstalled ? ' (Fallback - Central Config takes priority)' : ''),
+        get_string('siteid_desc', 'mod_aiactivities') . $fallbacknote,
         '',
         PARAM_TEXT
     ));
@@ -68,7 +63,7 @@ if ($hassiteconfig) {
     $settings->add(new admin_setting_configpasswordunmask(
         'mod_aiactivities/apikey',
         get_string('apikey', 'mod_aiactivities'),
-        get_string('apikey_desc', 'mod_aiactivities') . ($centralconfiginstalled ? ' (Fallback - Central Config takes priority)' : ''),
+        get_string('apikey_desc', 'mod_aiactivities') . $fallbacknote,
         ''
     ));
 

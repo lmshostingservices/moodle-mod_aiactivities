@@ -15,11 +15,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_aiactivities file.
+ * Lists every AI Learning Activities instance in a course.
  *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once(__DIR__ . '/../../config.php');
@@ -28,6 +28,9 @@ $id = required_param('id', PARAM_INT);
 
 $course = $DB->get_record('course', ['id' => $id], '*', MUST_EXIST);
 require_login($course);
+
+$coursecontext = context_course::instance($course->id);
+require_capability('mod/aiactivities:view', $coursecontext);
 
 $PAGE->set_url('/mod/aiactivities/index.php', ['id' => $id]);
 $PAGE->set_title(format_string($course->fullname));

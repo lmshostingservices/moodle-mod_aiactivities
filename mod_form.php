@@ -15,18 +15,26 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_aiactivities file.
+ * Settings form for an AI Learning Activities instance.
  *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/course/moodleform_mod.php');
 
+/**
+ * Defines the module settings form.
+ */
 class mod_aiactivities_mod_form extends moodleform_mod {
+    /**
+     * Defines the form elements.
+     *
+     * @return void
+     */
     public function definition() {
         global $CFG;
         $mform = $this->_form;
@@ -49,29 +57,55 @@ class mod_aiactivities_mod_form extends moodleform_mod {
         $this->add_action_buttons();
     }
 
+    /**
+     * Adds the custom completion rules to the form.
+     *
+     * @return string[] The names of the added elements.
+     */
     public function add_completion_rules() {
         $mform = $this->_form;
         $suffix = $this->get_suffix();
 
-        $mform->addElement('checkbox', 'completionallcorrect' . $suffix,
-            get_string('completionallcorrect', 'mod_aiactivities'));
+        $mform->addElement(
+            'checkbox',
+            'completionallcorrect' . $suffix,
+            get_string('completionallcorrect', 'mod_aiactivities')
+        );
         $mform->setDefault('completionallcorrect' . $suffix, 1);
         $mform->addHelpButton('completionallcorrect' . $suffix, 'completionallcorrect', 'mod_aiactivities');
 
         return ['completionallcorrect' . $suffix];
     }
 
+    /**
+     * Reports whether a custom completion rule is enabled.
+     *
+     * @param array $data The submitted data.
+     * @return bool True when the rule is enabled.
+     */
     public function completion_rule_enabled($data) {
         $suffix = $this->get_suffix();
         return !empty($data['completionallcorrect' . $suffix]);
     }
 
+    /**
+     * Normalises the submitted completion data.
+     *
+     * @param stdClass $data The submitted data.
+     * @return void
+     */
     public function data_postprocessing($data) {
         parent::data_postprocessing($data);
         $suffix = $this->get_suffix();
         $data->completionallcorrect = !empty($data->{"completionallcorrect$suffix"}) ? 1 : 0;
     }
 
+    /**
+     * Prepares the stored data for display in the form.
+     *
+     * @param array $defaultvalues The current values, modified in place.
+     * @return void
+     */
     public function data_preprocessing(&$defaultvalues) {
         parent::data_preprocessing($defaultvalues);
         $suffix = $this->get_suffix();
@@ -80,6 +114,13 @@ class mod_aiactivities_mod_form extends moodleform_mod {
         }
     }
 
+    /**
+     * Validates the submitted data.
+     *
+     * @param array $data The submitted data.
+     * @param array $files The submitted files.
+     * @return array Validation errors.
+     */
     public function validation($data, $files) {
         $errors = parent::validation($data, $files);
         return $errors;

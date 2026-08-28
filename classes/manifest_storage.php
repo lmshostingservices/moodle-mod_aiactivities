@@ -15,26 +15,36 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Manifest storage helper — gzip compression for large DB columns.
+ * Compression helper for the generated activity manifest.
  *
- * Prevents MySQL max_allowed_packet errors when activitiesjson exceeds 512 KB.
- *
- * Format: raw JSON stored as-is (backward-compatible).
- *         Compressed: "gz:" + base64(gzencode(data, 6))
+ * Activity data is stored as JSON in a single text column. Manifests that
+ * include narration audio can be large, so anything past the threshold is
+ * stored gzipped and base64 encoded behind a short prefix. Smaller manifests
+ * are stored as plain JSON, which keeps existing rows readable.
  *
  * @package    mod_aiactivities
- * @copyright  2025 AI Grader <support@lmshostingservices.com>
+ * @copyright  2026 LMS-Labs
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace mod_aiactivities;
 
-defined('MOODLE_INTERNAL') || die();
-
+/**
+ * Compresses and decompresses the stored activity manifest.
+ */
 class manifest_storage {
-    const THRESHOLD = 524288;
-    const PREFIX    = 'gz:';
+    /** @var int Manifests larger than this many bytes are stored compressed. */
+    public const THRESHOLD = 524288;
 
+    /** @var string Marks a stored value as compressed. */
+    public const PREFIX = 'gz:';
+
+    /**
+     * Compresses a manifest when it is large enough to be worth it.
+     *
+     * @param string|null $data The JSON manifest.
+     * @return string|null The value to store, compressed only when past the threshold.
+     */
     public static function compress(?string $data): ?string {
         if ($data === null || $data === '') {
             return $data;
@@ -42,15 +52,21 @@ class manifest_storage {
         if (strlen($data) < self::THRESHOLD) {
             return $data;
         }
+
         $compressed = gzencode($data, 6);
         if ($compressed === false) {
             return $data;
         }
-        $result = self::PREFIX . base64_encode($compressed);
-        error_log('[ALA SAVE] Compressed ' . strlen($data) . ' B → ' . strlen($result) . ' B');
-        return $result;
+
+        return self::PREFIX . base64_encode($compressed);
     }
 
+    /**
+     * Returns the JSON manifest for a stored value, decompressing it when needed.
+     *
+     * @param string|null $data The stored value.
+     * @return string|null The JSON manifest.
+     */
     public static function decompress(?string $data): ?string {
         if ($data === null || $data === '') {
             return $data;
@@ -58,14 +74,17 @@ class manifest_storage {
         if (strncmp($data, self::PREFIX, 3) !== 0) {
             return $data;
         }
+
         $decoded = base64_decode(substr($data, 3), true);
         if ($decoded === false) {
             return $data;
         }
+
         $decompressed = gzdecode($decoded);
         if ($decompressed === false) {
             return $data;
         }
+
         return $decompressed;
     }
 }

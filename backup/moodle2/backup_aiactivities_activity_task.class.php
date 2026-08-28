@@ -15,25 +15,44 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_aiactivities file.
+ * Backup task for mod_aiactivities.
  *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/mod/aiactivities/backup/moodle2/backup_aiactivities_stepslib.php');
 
+/**
+ * Backup task for mod_aiactivities
+ */
 class backup_aiactivities_activity_task extends backup_activity_task {
+    /**
+     * Defines the settings this task adds.
+     *
+     * @return void
+     */
     protected function define_my_settings() {
     }
 
+    /**
+     * Defines the steps this task runs.
+     *
+     * @return void
+     */
     protected function define_my_steps() {
         $this->add_step(new backup_aiactivities_activity_structure_step('aiactivities_structure', 'aiactivities.xml'));
     }
 
+    /**
+     * Encodes links to this activity so they survive backup.
+     *
+     * @param string $content The content to process.
+     * @return string The processed content.
+     */
     public static function encode_content_links($content) {
         global $CFG;
 

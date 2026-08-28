@@ -18,7 +18,7 @@
         <FIELD NAME="completionallcorrect" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Complete when all activities correct"/>
         <FIELD NAME="voiceoverenabled" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Voiceover narration enabled"/>
         <FIELD NAME="voicegender" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="female" SEQUENCE="false" COMMENT="Voice gender preference"/>
-        <FIELD NAME="voiceid" TYPE="char" LENGTH="50" NOTNULL="true" DEFAULT="Aoede" SEQUENCE="false" COMMENT="Voice ID for TTS"/>
+        <FIELD NAME="voiceid" TYPE="char" LENGTH="50" NOTNULL="true" DEFAULT="Zephyr" SEQUENCE="false" COMMENT="Voice ID for TTS"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>

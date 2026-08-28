@@ -15,473 +15,398 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_aiactivities file.
+ * AJAX endpoint for the AI Learning Activities player and generation form.
+ *
+ * Every action requires a valid session key, an authenticated user with access
+ * to the course module named by the cmid parameter, and the capability that
+ * matches the action.
  *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 define('AJAX_SCRIPT', true);
 
 require_once(__DIR__ . '/../../config.php');
-require_once($CFG->libdir . '/filelib.php'); // required for \curl class
+require_once($CFG->libdir . '/filelib.php');
 require_once(__DIR__ . '/lib.php');
 
 $action = required_param('action', PARAM_ALPHANUMEXT);
-$sesskey = required_param('sesskey', PARAM_RAW); // pipeline-ignore: PARAM_RAW — opaque session key token, validated via confirm_sesskey()
+$cmid = required_param('cmid', PARAM_INT);
 
-if (!confirm_sesskey($sesskey)) {
-    header('Content-Type: application/json');
-    echo json_encode(['ok' => false, 'error' => 'Invalid session']);
-    exit;
-}
+require_sesskey();
 
-$apibase = get_config('mod_aiactivities', 'apiurl');
-if (empty($apibase)) {
-    $apibase = 'https://lms-labs.com';
-}
-$apibase = rtrim($apibase, '/');
+$cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
+$course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
+$instance = $DB->get_record('aiactivities', ['id' => $cm->instance], '*', MUST_EXIST);
 
-$aiconfiglib = $CFG->dirroot . '/local/aiconfig/lib.php';
-if (file_exists($aiconfiglib)) {
-    require_once($aiconfiglib);
-}
+require_login($course, false, $cm);
 
-$siteid = '';
-$apikey = '';
-if (function_exists('local_aiconfig_get_siteid')) {
-    $siteid = trim(local_aiconfig_get_siteid() ?? '');
-}
-if (function_exists('local_aiconfig_get_apikey')) {
-    $apikey = trim(local_aiconfig_get_apikey() ?? '');
-}
-if (empty($siteid)) {
-    $siteid = trim(get_config('mod_aiactivities', 'siteid') ?? '');
-}
-if (empty($apikey)) {
-    $apikey = trim(get_config('mod_aiactivities', 'apikey') ?? '');
+$context = context_module::instance($cm->id);
+require_capability('mod/aiactivities:view', $context);
+
+// Actions that change generated content and are limited to users who may create it.
+$createactions = ['generate', 'generate_async', 'poll_job', 'save_generated', 'savevoicesettings',
+    'regenerateaudio', 'saveactivity', 'getcredits'];
+if (in_array($action, $createactions, true)) {
+    require_capability('mod/aiactivities:create', $context);
 }
 
-// Release session lock before long-running API calls to prevent blocking other requests.
+$apibase = aiactivities_get_api_base();
+[$siteid, $apikey] = aiactivities_get_credentials();
+
+// Release the session lock before any long-running API call so that other
+// requests from the same user are not blocked.
 \core\session\manager::write_close();
 
 header('Content-Type: application/json');
 
+/**
+ * Returns a configured curl instance for talking to the generation service.
+ *
+ * @param int $timeout Request timeout in seconds.
+ * @return \curl The configured curl instance.
+ */
+function aiactivities_api_curl(int $timeout): \curl {
+    $curl = new \curl();
+    $curloptions = [
+        'CURLOPT_TIMEOUT' => $timeout,
+        'CURLOPT_CONNECTTIMEOUT' => 15,
+        'CURLOPT_SSL_VERIFYPEER' => true,
+        'CURLOPT_SSL_VERIFYHOST' => 2,
+        'CURLOPT_FOLLOWLOCATION' => false,
+    ];
+    $curl->setopt($curloptions);
+    return $curl;
+}
+
 switch ($action) {
     case 'getcredits':
-        $cmid = required_param('cmid', PARAM_INT);
-        $cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-        require_login($course, false, $cm);
-        $context = context_module::instance($cm->id);
-        require_capability('mod/aiactivities:view', $context);
-
-        if (strlen($siteid) === 0 || strlen($apikey) === 0) {
-            echo json_encode(['ok' => false, 'error' => 'Plugin not configured']);
+        if ($siteid === '' || $apikey === '') {
+            echo json_encode(['ok' => false, 'error' => get_string('not_configured', 'mod_aiactivities')]);
             break;
         }
 
-        $url = $apibase . '/api/credits?' . http_build_query(['siteId' => $siteid, 'apiKey' => $apikey], '', '&');
+        // The credentials are sent in the request body so that they do not
+        // appear in web server or proxy logs. Older deployments of the service
+        // only accept them as query parameters, so fall back to that form.
+        $curl = aiactivities_api_curl(30);
+        $curl->setHeader(['Content-Type: application/json']);
+        $response = $curl->post(
+            $apibase . '/api/credits',
+            json_encode(['siteId' => $siteid, 'apiKey' => $apikey])
+        );
+        $httpcode = (int)$curl->info['http_code'];
 
-        $curl = new \curl();
-        $curl->setopt(['CURLOPT_TIMEOUT' => 30, 'CURLOPT_SSL_VERIFYPEER' => true, 'CURLOPT_FOLLOWLOCATION' => true]);
-        $response = $curl->get($url);
-        $httpcode = $curl->info['http_code'];
+        // A service that only accepts the credentials as query parameters can
+        // answer a JSON POST in several ways, so the fallback covers all of
+        // them. Note that redirects are not followed: the configured API URL
+        // must be the final URL, not one that redirects to it.
+        if (in_array($httpcode, [301, 302, 303, 307, 308, 400, 403, 405, 406, 415, 501], true)) {
+            $curl = aiactivities_api_curl(30);
+            $query = http_build_query(['siteId' => $siteid, 'apiKey' => $apikey], '', '&');
+            $response = $curl->get($apibase . '/api/credits?' . $query);
+            $httpcode = (int)$curl->info['http_code'];
+        }
 
         if ($httpcode === 200) {
             $result = json_decode($response, true);
             echo json_encode(['ok' => true, 'credits' => $result['credits'] ?? 0]);
         } else {
-            echo json_encode(['ok' => false, 'error' => 'Failed to fetch credits']);
+            echo json_encode(['ok' => false, 'error' => get_string('error_credits_failed', 'mod_aiactivities')]);
         }
         break;
 
     case 'generate':
-        $cmid = required_param('cmid', PARAM_INT);
-        $cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-        $instance = $DB->get_record('aiactivities', ['id' => $cm->instance], '*', MUST_EXIST);
-        require_login($course, false, $cm);
-        $context = context_module::instance($cm->id);
-        require_capability('mod/aiactivities:create', $context);
+        $content = required_param('content', PARAM_TEXT);
 
-        $contentraw = required_param('content', PARAM_RAW); // pipeline-ignore: PARAM_RAW — free-form rich text/HTML, escaped or format_text()d on output
-        $content = clean_param($contentraw, PARAM_TEXT);
-
-        if (empty(trim($content))) {
+        if (trim($content) === '') {
             echo json_encode(['ok' => false, 'error' => get_string('error_no_content', 'mod_aiactivities')]);
             break;
         }
-        if (strlen($content) > 50000) {
-            $content = substr($content, 0, 50000);
+        if (core_text::strlen($content) > 50000) {
+            $content = core_text::substr($content, 0, 50000);
         }
 
-        $language = optional_param('language', 'en-AU', PARAM_TEXT);
-        $activitycount = optional_param('activitycount', 5, PARAM_INT);
-        $activitycount = max(5, min(20, $activitycount));
+        $options = aiactivities_read_generation_options();
+        $payload = aiactivities_build_generation_payload($siteid, $apikey, $content, $options);
 
-        $scenariomode = optional_param('scenariomode', '0', PARAM_TEXT);
-        $scenariocountry = optional_param('scenariocountry', '', PARAM_TEXT);
-        $scenarioindustry = optional_param('scenarioindustry', '', PARAM_TEXT);
-        $scenarioworkerlevel = optional_param('scenarioworkerlevel', '', PARAM_TEXT);
-        $scenariojobroles = optional_param('scenariojobroles', '', PARAM_TEXT);
-        $voiceoverenabled = optional_param('voiceoverenabled', '0', PARAM_TEXT);
-        $voicegender = optional_param('voicegender', 'female', PARAM_TEXT);
-        $voiceid = optional_param('voiceid', 'Zephyr', PARAM_TEXT);
-
-        $url = $apibase . '/api/generate-aiactivities';
-        $payload = [
-            'siteId' => $siteid,
-            'apiKey' => $apikey,
-            'content' => $content,
-            'language' => $language,
-            'activityCount' => $activitycount,
-        ];
-
-        if ($scenariomode === '1') {
-            $payload['scenarioMode'] = true;
-            if (!empty(trim($scenariocountry))) {
-                $payload['scenarioCountry'] = trim($scenariocountry);
-            }
-            if (!empty(trim($scenarioindustry))) {
-                $payload['scenarioIndustry'] = trim($scenarioindustry);
-            }
-            if (!empty(trim($scenarioworkerlevel))) {
-                $payload['scenarioWorkerLevel'] = trim($scenarioworkerlevel);
-            }
-            if (!empty(trim($scenariojobroles))) {
-                $payload['scenarioJobRoles'] = trim($scenariojobroles);
-            }
-        }
-
-        if ($voiceoverenabled === '1') {
-            $payload['voiceoverEnabled'] = true;
-            $payload['voiceGender'] = clean_param($voicegender, PARAM_TEXT);
-            $payload['voiceId'] = clean_param($voiceid, PARAM_TEXT);
-        }
-
-        $curl = new \curl();
-        $curl->setopt(['CURLOPT_TIMEOUT' => 180]);
+        $curl = aiactivities_api_curl(180);
         $curl->setHeader(['Content-Type: application/json']);
-        $response = $curl->post($url, json_encode($payload));
-        $curlerror = $curl->error;
-        $httpcode = $curl->info['http_code'];
+        $response = $curl->post($apibase . '/api/generate-aiactivities', json_encode($payload));
 
-        if ($curlerror) {
-            echo json_encode(['ok' => false, 'error' => 'Connection error: ' . $curlerror]);
+        if ($curl->error) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_connection', 'mod_aiactivities')]);
             break;
         }
 
-        if ($httpcode === 200) {
-            $result = json_decode($response, true);
-            if ($result && !empty($result['ok']) && !empty($result['activities'])) {
-                $DB->set_field('aiactivities', 'activitiesjson', \mod_aiactivities\manifest_storage::compress(json_encode($result['activities'])), ['id' => $instance->id]);
-                $DB->set_field('aiactivities', 'content', $content, ['id' => $instance->id]);
-                $DB->set_field('aiactivities', 'language', $language, ['id' => $instance->id]);
-                $DB->set_field('aiactivities', 'activitycount', $activitycount, ['id' => $instance->id]);
-                $DB->set_field('aiactivities', 'voiceoverenabled', ($voiceoverenabled === '1') ? 1 : 0, ['id' => $instance->id]);
-                if ($voiceoverenabled === '1') {
-                    $DB->set_field('aiactivities', 'voicegender', clean_param($voicegender, PARAM_TEXT), ['id' => $instance->id]);
-                    $DB->set_field('aiactivities', 'voiceid', clean_param($voiceid, PARAM_TEXT), ['id' => $instance->id]);
-                }
-                $DB->set_field('aiactivities', 'timemodified', time(), ['id' => $instance->id]);
-                echo json_encode(['ok' => true, 'activities' => $result['activities'], 'creditsUsed' => $result['creditsUsed'] ?? 0]);
-            } else {
-                $error = $result['error'] ?? 'Invalid API response';
-                echo json_encode(['ok' => false, 'error' => $error]);
-            }
+        $result = json_decode($response, true);
+
+        if ((int)$curl->info['http_code'] === 200 && $result && !empty($result['ok']) && !empty($result['activities'])) {
+            aiactivities_store_activities($instance->id, $result['activities'], $content, $options);
+            $success = [
+                'ok' => true,
+                'activities' => $result['activities'],
+                'creditsUsed' => $result['creditsUsed'] ?? 0,
+            ];
+            echo json_encode($success);
         } else {
-            $result = json_decode($response, true);
-            $error = $result['error'] ?? 'API request failed (HTTP ' . $httpcode . ')';
-            echo json_encode(['ok' => false, 'error' => $error]);
+            $failure = [
+                'ok' => false,
+                'error' => $result['error'] ?? get_string('error_generation_failed', 'mod_aiactivities'),
+            ];
+            echo json_encode($failure);
         }
         break;
 
-    // ASYNC: Start generation job — returns jobId in ~500ms so proxy can't timeout.
-    // JS polls case 'poll_job' every 3-4s until status=done.
     case 'generate_async':
-        $cmid = required_param('cmid', PARAM_INT);
-        $cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-        $instance = $DB->get_record('aiactivities', ['id' => $cm->instance], '*', MUST_EXIST);
-        require_login($course, false, $cm);
-        $context = context_module::instance($cm->id);
-        require_capability('mod/aiactivities:create', $context);
+        // Starts a background generation job and returns immediately with a job
+        // id, so that a slow generation cannot time out at a reverse proxy. The
+        // player polls the poll_job action until the job reports it is done.
+        $content = required_param('content', PARAM_TEXT);
 
-        $contentraw = required_param('content', PARAM_RAW); // pipeline-ignore: PARAM_RAW — free-form rich text/HTML, escaped or format_text()d on output
-        $content = clean_param($contentraw, PARAM_TEXT);
-        if (empty(trim($content))) {
+        if (trim($content) === '') {
             echo json_encode(['ok' => false, 'error' => get_string('error_no_content', 'mod_aiactivities')]);
             break;
         }
-        if (strlen($content) > 50000) { $content = substr($content, 0, 50000); }
-
-        $language = optional_param('language', 'en-AU', PARAM_TEXT);
-        $activitycount = max(5, min(20, optional_param('activitycount', 5, PARAM_INT)));
-        $scenariomode = optional_param('scenariomode', '0', PARAM_TEXT);
-        $scenariocountry = optional_param('scenariocountry', '', PARAM_TEXT);
-        $scenarioindustry = optional_param('scenarioindustry', '', PARAM_TEXT);
-        $scenarioworkerlevel = optional_param('scenarioworkerlevel', '', PARAM_TEXT);
-        $scenariojobroles = optional_param('scenariojobroles', '', PARAM_TEXT);
-        $voiceoverenabled = optional_param('voiceoverenabled', '0', PARAM_TEXT);
-        $voicegender = optional_param('voicegender', 'female', PARAM_TEXT);
-        $voiceid = optional_param('voiceid', 'Zephyr', PARAM_TEXT);
-
-        $payload = ['siteId' => $siteid, 'apiKey' => $apikey, 'content' => $content,
-                    'language' => $language, 'activityCount' => $activitycount];
-        if ($scenariomode === '1') {
-            $payload['scenarioMode'] = true;
-            if (!empty(trim($scenariocountry)))    { $payload['scenarioCountry']    = trim($scenariocountry); }
-            if (!empty(trim($scenarioindustry)))   { $payload['scenarioIndustry']   = trim($scenarioindustry); }
-            if (!empty(trim($scenarioworkerlevel))){ $payload['scenarioWorkerLevel'] = trim($scenarioworkerlevel); }
-            if (!empty(trim($scenariojobroles)))   { $payload['scenarioJobRoles']   = trim($scenariojobroles); }
-        }
-        if ($voiceoverenabled === '1') {
-            $payload['voiceoverEnabled'] = true;
-            $payload['voiceGender'] = clean_param($voicegender, PARAM_TEXT);
-            $payload['voiceId'] = clean_param($voiceid, PARAM_TEXT);
+        if (core_text::strlen($content) > 50000) {
+            $content = core_text::substr($content, 0, 50000);
         }
 
-        \core\session\manager::write_close();
+        $options = aiactivities_read_generation_options();
+        $payload = aiactivities_build_generation_payload($siteid, $apikey, $content, $options);
 
-        $startUrl = $apibase . '/api/generate-aiactivities/start';
-        $curl = new \curl();
-        $curl->setopt(['CURLOPT_TIMEOUT' => 15]);
+        $curl = aiactivities_api_curl(15);
         $curl->setHeader(['Content-Type: application/json']);
-        $resp = json_decode($curl->post($startUrl, json_encode($payload)), true);
+        $response = json_decode($curl->post($apibase . '/api/generate-aiactivities/start', json_encode($payload)), true);
 
-        if (empty($resp['ok']) || empty($resp['jobId'])) {
-            echo json_encode(['ok' => false, 'error' => $resp['error'] ?? 'Failed to start generation']);
+        if (empty($response['ok']) || empty($response['jobId'])) {
+            $failure = [
+                'ok' => false,
+                'error' => $response['error'] ?? get_string('error_generation_start', 'mod_aiactivities'),
+            ];
+            echo json_encode($failure);
             break;
         }
-        echo json_encode(['ok' => true, 'jobId' => $resp['jobId'], 'async' => true]);
+
+        echo json_encode(['ok' => true, 'jobId' => $response['jobId'], 'async' => true]);
         break;
 
-    // ASYNC POLL: Check background job status.
     case 'poll_job':
-        $jobId = required_param('jobId', PARAM_ALPHANUMEXT);
-        \core\session\manager::write_close();
-        $curl = new \curl();
-        $curl->setopt(['CURLOPT_TIMEOUT' => 10]);
-        $resp = json_decode($curl->get($apibase . '/api/jobs/' . urlencode($jobId)), true);
-        echo json_encode($resp ?: ['ok' => false, 'status' => 'error', 'error' => 'Could not reach job status endpoint']);
+        $jobid = required_param('jobId', PARAM_ALPHANUMEXT);
+
+        $curl = aiactivities_api_curl(10);
+        $response = json_decode($curl->get($apibase . '/api/jobs/' . urlencode($jobid)), true);
+
+        $fallback = [
+            'ok' => false,
+            'status' => 'error',
+            'error' => get_string('error_job_status', 'mod_aiactivities'),
+        ];
+        echo json_encode($response ?: $fallback);
         break;
 
-    // ASYNC SAVE: After poll_job returns status=done, JS sends the generated activities
-    // back here so they can be saved to the Moodle DB. The generate_async case cannot
-    // save to DB itself (it returns immediately without the AI result). This case is the
-    // async equivalent of the DB-write section inside the sync 'generate' case.
     case 'save_generated':
-        $cmid = required_param('cmid', PARAM_INT);
-        $cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-        $instance = $DB->get_record('aiactivities', ['id' => $cm->instance], '*', MUST_EXIST);
-        require_login($course, false, $cm);
-        $context = context_module::instance($cm->id);
-        require_capability('mod/aiactivities:create', $context);
+        // Stores the activities produced by an asynchronous job. The
+        // generate_async action returns before the result exists, so the
+        // player sends it back here once polling reports the job is done.
+        // phpcs:ignore moodle.Commenting.InlineComment.NotCapital -- Verbatim pipeline annotation.
+        $json = required_param('activitiesjson', PARAM_RAW); // pipeline-ignore: PARAM_RAW — JSON, validated below.
+        $activities = json_decode($json, true);
 
-        $activitiesjson  = required_param('activitiesjson', PARAM_RAW); // pipeline-ignore: PARAM_RAW — JSON blob, immediately json_decode()d and validated
-        $content         = optional_param('content', '', PARAM_RAW); // pipeline-ignore: PARAM_RAW — free-form rich text/HTML, escaped or format_text()d on output
-        $language        = optional_param('language', 'en-AU', PARAM_TEXT);
-        $activitycount   = max(5, min(20, optional_param('activitycount', 5, PARAM_INT)));
-        $voiceoverenabled = optional_param('voiceoverenabled', '0', PARAM_TEXT);
-        $voicegender     = optional_param('voicegender', 'female', PARAM_TEXT);
-        $voiceid         = optional_param('voiceid', 'Aoede', PARAM_TEXT);
-
-        $activities = json_decode($activitiesjson, true);
         if (empty($activities) || !is_array($activities)) {
-            echo json_encode(['ok' => false, 'error' => 'Invalid activities data']);
+            echo json_encode(['ok' => false, 'error' => get_string('error_invalid_activities', 'mod_aiactivities')]);
             break;
         }
 
-        $DB->set_field('aiactivities', 'activitiesjson',
-            \mod_aiactivities\manifest_storage::compress(json_encode($activities)),
-            ['id' => $instance->id]);
-        $cleanContent = clean_param($content, PARAM_TEXT);
-        if (!empty(trim($cleanContent))) {
-            $DB->set_field('aiactivities', 'content', $cleanContent, ['id' => $instance->id]);
-        }
-        $DB->set_field('aiactivities', 'language', $language, ['id' => $instance->id]);
-        $DB->set_field('aiactivities', 'activitycount', $activitycount, ['id' => $instance->id]);
-        $DB->set_field('aiactivities', 'voiceoverenabled', ($voiceoverenabled === '1') ? 1 : 0, ['id' => $instance->id]);
-        if ($voiceoverenabled === '1') {
-            $DB->set_field('aiactivities', 'voicegender', clean_param($voicegender, PARAM_TEXT), ['id' => $instance->id]);
-            $DB->set_field('aiactivities', 'voiceid', clean_param($voiceid, PARAM_TEXT), ['id' => $instance->id]);
-        }
-        $DB->set_field('aiactivities', 'timemodified', time(), ['id' => $instance->id]);
+        $content = optional_param('content', '', PARAM_TEXT);
+        $options = aiactivities_read_generation_options();
+
+        aiactivities_store_activities($instance->id, $activities, $content, $options);
 
         echo json_encode(['ok' => true]);
         break;
 
-    // Save voiceover settings without regenerating activities.
     case 'savevoicesettings':
-        $cmid = required_param('cmid', PARAM_INT);
-        $cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-        $instance = $DB->get_record('aiactivities', ['id' => $cm->instance], '*', MUST_EXIST);
-        require_login($course, false, $cm);
-        $context = context_module::instance($cm->id);
-        require_capability('mod/aiactivities:create', $context);
-
         $voiceoverenabled = optional_param('voiceoverenabled', '0', PARAM_TEXT);
-        $voicegender = optional_param('voicegender', 'female', PARAM_TEXT);
-        $voiceid = optional_param('voiceid', 'Zephyr', PARAM_TEXT);
 
-        $DB->set_field('aiactivities', 'voiceoverenabled', ($voiceoverenabled === '1') ? 1 : 0, ['id' => $instance->id]);
-        $DB->set_field('aiactivities', 'voicegender', clean_param($voicegender, PARAM_TEXT), ['id' => $instance->id]);
-        $DB->set_field('aiactivities', 'voiceid', clean_param($voiceid, PARAM_TEXT), ['id' => $instance->id]);
-        $DB->set_field('aiactivities', 'timemodified', time(), ['id' => $instance->id]);
+        $update = new stdClass();
+        $update->id = $instance->id;
+        $update->voiceoverenabled = ($voiceoverenabled === '1') ? 1 : 0;
+        $update->voicegender = clean_param(optional_param('voicegender', 'female', PARAM_TEXT), PARAM_TEXT);
+        $update->voiceid = clean_param(optional_param('voiceid', 'Zephyr', PARAM_TEXT), PARAM_TEXT);
+        $update->timemodified = time();
+        $DB->update_record('aiactivities', $update);
 
         echo json_encode(['ok' => true]);
         break;
 
-    // Regenerate voiceover audio for existing activities by calling server TTS endpoint.
     case 'regenerateaudio':
-        $cmid = required_param('cmid', PARAM_INT);
-        $cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-        $instance = $DB->get_record('aiactivities', ['id' => $cm->instance], '*', MUST_EXIST);
-        require_login($course, false, $cm);
-        $context = context_module::instance($cm->id);
-        require_capability('mod/aiactivities:create', $context);
+        // phpcs:ignore moodle.Commenting.InlineComment.NotCapital -- Verbatim pipeline annotation.
+        $json = required_param('activitiesjson', PARAM_RAW); // pipeline-ignore: PARAM_RAW — JSON, validated below.
+        $activities = json_decode($json, true);
 
-        $activitiesjsonraw = required_param('activitiesjson', PARAM_RAW); // pipeline-ignore: PARAM_RAW — JSON blob, immediately json_decode()d and validated
-        $voicelanguage = optional_param('voicelanguage', 'en-AU', PARAM_TEXT);
-        $voiceid = optional_param('voiceid', 'Zephyr', PARAM_TEXT);
-
-        $activities = json_decode($activitiesjsonraw, true);
         if (empty($activities) || !is_array($activities)) {
-            echo json_encode(['ok' => false, 'error' => 'Invalid activities data']);
+            echo json_encode(['ok' => false, 'error' => get_string('error_invalid_activities', 'mod_aiactivities')]);
             break;
         }
 
-        $url = $apibase . '/api/aiactivities-regenerate-audio';
         $payload = [
             'siteId' => $siteid,
             'apiKey' => $apikey,
             'activities' => $activities,
-            'voiceLanguage' => $voicelanguage,
-            'voiceId' => $voiceid,
+            'voiceLanguage' => optional_param('voicelanguage', 'en-AU', PARAM_TEXT),
+            'voiceId' => clean_param(optional_param('voiceid', 'Zephyr', PARAM_TEXT), PARAM_TEXT),
         ];
 
-        $curl = new \curl();
-        $curl->setopt(['CURLOPT_TIMEOUT' => 180]);
+        $curl = aiactivities_api_curl(180);
         $curl->setHeader(['Content-Type: application/json']);
-        $response = $curl->post($url, json_encode($payload));
-        $httpcode = $curl->info['http_code'];
+        $response = $curl->post($apibase . '/api/aiactivities-regenerate-audio', json_encode($payload));
+        $result = json_decode($response, true);
 
-        if ($httpcode === 200) {
-            $result = json_decode($response, true);
-            if ($result && !empty($result['ok']) && !empty($result['activities'])) {
-                $DB->set_field('aiactivities', 'activitiesjson',
-                    \mod_aiactivities\manifest_storage::compress(json_encode($result['activities'])),
-                    ['id' => $instance->id]);
-                $DB->set_field('aiactivities', 'timemodified', time(), ['id' => $instance->id]);
-                echo json_encode(['ok' => true, 'activities' => $result['activities']]);
-            } else {
-                echo json_encode(['ok' => false, 'error' => $result['error'] ?? 'Audio generation failed']);
-            }
+        if ((int)$curl->info['http_code'] === 200 && $result && !empty($result['ok']) && !empty($result['activities'])) {
+            $update = new stdClass();
+            $update->id = $instance->id;
+            $update->activitiesjson = \mod_aiactivities\manifest_storage::compress(json_encode($result['activities']));
+            $update->timemodified = time();
+            $DB->update_record('aiactivities', $update);
+
+            echo json_encode(['ok' => true, 'activities' => $result['activities']]);
         } else {
-            echo json_encode(['ok' => false, 'error' => 'Server error ' . $httpcode]);
+            $failure = [
+                'ok' => false,
+                'error' => $result['error'] ?? get_string('error_audio_failed', 'mod_aiactivities'),
+            ];
+            echo json_encode($failure);
         }
         break;
 
+    case 'saveactivity':
+        $activityindex = required_param('activityindex', PARAM_INT);
+        // phpcs:ignore moodle.Commenting.InlineComment.NotCapital -- Verbatim pipeline annotation.
+        $json = required_param('activityjson', PARAM_RAW); // pipeline-ignore: PARAM_RAW — JSON, validated below.
+        $updatedactivity = json_decode($json, true);
+
+        $allactivities = json_decode(\mod_aiactivities\manifest_storage::decompress($instance->activitiesjson), true);
+        if (!is_array($allactivities)) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_no_activities', 'mod_aiactivities')]);
+            break;
+        }
+
+        if ($activityindex < 0 || $activityindex >= count($allactivities)) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_invalid_index', 'mod_aiactivities')]);
+            break;
+        }
+
+        if (empty($updatedactivity) || !is_array($updatedactivity)) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_invalid_activities', 'mod_aiactivities')]);
+            break;
+        }
+
+        $allactivities[$activityindex] = $updatedactivity;
+
+        $update = new stdClass();
+        $update->id = $instance->id;
+        $update->activitiesjson = \mod_aiactivities\manifest_storage::compress(json_encode($allactivities));
+        $update->timemodified = time();
+        $DB->update_record('aiactivities', $update);
+
+        echo json_encode(['ok' => true]);
+        break;
+
     case 'startattempt':
-        $cmid = required_param('cmid', PARAM_INT);
-        $cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-        $instance = $DB->get_record('aiactivities', ['id' => $cm->instance], '*', MUST_EXIST);
-        require_login($course, false, $cm);
-        $context = context_module::instance($cm->id);
-        require_capability('mod/aiactivities:view', $context);
-
-        $userid = $USER->id;
-
-        $completed = $DB->get_record('aiactivities_attempts', [
+        $completedconditions = [
             'aiactivitiesid' => $instance->id,
-            'userid' => $userid,
+            'userid' => $USER->id,
             'status' => 1,
-        ]);
+        ];
+        $completed = $DB->get_record('aiactivities_attempts', $completedconditions);
 
         if ($completed) {
-            echo json_encode([
+            $completedresponse = [
                 'ok' => true,
                 'attemptid' => $completed->id,
                 'resumed' => true,
                 'completed' => true,
                 'currentactivity' => 0,
                 'progress' => [],
-            ]);
+            ];
+            echo json_encode($completedresponse);
             break;
         }
 
-        $inprogress = $DB->get_record('aiactivities_attempts', [
+        $inprogressconditions = [
             'aiactivitiesid' => $instance->id,
-            'userid' => $userid,
+            'userid' => $USER->id,
             'status' => 0,
-        ]);
+        ];
+        $inprogress = $DB->get_record('aiactivities_attempts', $inprogressconditions);
 
         if ($inprogress) {
-            echo json_encode([
+            $resumeresponse = [
                 'ok' => true,
                 'attemptid' => $inprogress->id,
                 'resumed' => true,
                 'completed' => false,
                 'currentactivity' => (int)$inprogress->currentactivity,
                 'progress' => json_decode($inprogress->progressjson, true) ?: [],
-            ]);
+            ];
+            echo json_encode($resumeresponse);
             break;
         }
 
         $activities = json_decode(\mod_aiactivities\manifest_storage::decompress($instance->activitiesjson), true);
-        $totalcount = is_array($activities) ? count($activities) : 0;
 
         $now = time();
         $attempt = new stdClass();
         $attempt->aiactivitiesid = $instance->id;
-        $attempt->userid = $userid;
+        $attempt->userid = $USER->id;
         $attempt->progressjson = '{}';
         $attempt->currentactivity = 0;
         $attempt->completedcount = 0;
-        $attempt->totalcount = $totalcount;
+        $attempt->totalcount = is_array($activities) ? count($activities) : 0;
         $attempt->score = 0;
         $attempt->status = 0;
         $attempt->timecreated = $now;
         $attempt->timemodified = $now;
 
-        $attemptid = $DB->insert_record('aiactivities_attempts', $attempt);
-
-        echo json_encode([
+        $newattemptresponse = [
             'ok' => true,
-            'attemptid' => $attemptid,
+            'attemptid' => $DB->insert_record('aiactivities_attempts', $attempt),
             'resumed' => false,
             'currentactivity' => 0,
             'progress' => [],
-        ]);
+        ];
+        echo json_encode($newattemptresponse);
         break;
 
     case 'saveprogress':
         $attemptid = required_param('attemptid', PARAM_INT);
         $currentactivity = required_param('currentactivity', PARAM_INT);
-        $progressjson = required_param('progressjson', PARAM_RAW); // pipeline-ignore: PARAM_RAW — JSON blob, immediately json_decode()d and validated
+        // phpcs:ignore moodle.Commenting.InlineComment.NotCapital -- Verbatim pipeline annotation.
+        $progressjson = required_param('progressjson', PARAM_RAW); // pipeline-ignore: PARAM_RAW — JSON, validated.
         $completedcount = required_param('completedcount', PARAM_INT);
 
-        $attempt = $DB->get_record('aiactivities_attempts', ['id' => $attemptid], '*', MUST_EXIST);
+        $attempt = $DB->get_record(
+            'aiactivities_attempts',
+            ['id' => $attemptid, 'aiactivitiesid' => $instance->id, 'userid' => $USER->id]
+        );
 
-        $instance = $DB->get_record('aiactivities', ['id' => $attempt->aiactivitiesid], '*', MUST_EXIST);
-        $cm = get_coursemodule_from_instance('aiactivities', $instance->id, 0, false, MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-        require_login($course, false, $cm);
-
-        if ($attempt->userid != $USER->id) {
-            echo json_encode(['ok' => false, 'error' => 'Invalid attempt']);
+        if (!$attempt) {
+            echo json_encode(['ok' => false, 'error' => get_string('invalidattempt', 'mod_aiactivities')]);
             break;
         }
 
-        $attempt->currentactivity = $currentactivity;
-        $attempt->progressjson = $progressjson;
-        $attempt->completedcount = $completedcount;
+        $progress = json_decode($progressjson, true);
+        if (!is_array($progress)) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_invalid_progress', 'mod_aiactivities')]);
+            break;
+        }
+
+        $attempt->currentactivity = aiactivities_clamp_index($currentactivity, (int)$attempt->totalcount);
+        $attempt->progressjson = json_encode($progress);
+        $attempt->completedcount = aiactivities_clamp_index($completedcount, (int)$attempt->totalcount);
         $attempt->timemodified = time();
 
         $DB->update_record('aiactivities_attempts', $attempt);
@@ -492,15 +417,13 @@ switch ($action) {
     case 'complete':
         $attemptid = required_param('attemptid', PARAM_INT);
 
-        $attempt = $DB->get_record('aiactivities_attempts', ['id' => $attemptid], '*', MUST_EXIST);
+        $attempt = $DB->get_record(
+            'aiactivities_attempts',
+            ['id' => $attemptid, 'aiactivitiesid' => $instance->id, 'userid' => $USER->id]
+        );
 
-        $instance = $DB->get_record('aiactivities', ['id' => $attempt->aiactivitiesid], '*', MUST_EXIST);
-        $cm = get_coursemodule_from_instance('aiactivities', $instance->id, 0, false, MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-        require_login($course, false, $cm);
-
-        if ($attempt->userid != $USER->id) {
-            echo json_encode(['ok' => false, 'error' => 'Invalid attempt']);
+        if (!$attempt) {
+            echo json_encode(['ok' => false, 'error' => get_string('invalidattempt', 'mod_aiactivities')]);
             break;
         }
 
@@ -518,43 +441,106 @@ switch ($action) {
         echo json_encode(['ok' => true, 'completed' => true]);
         break;
 
-    case 'saveactivity':
-        $cmid = required_param('cmid', PARAM_INT);
-        $cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
-        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-        $instance = $DB->get_record('aiactivities', ['id' => $cm->instance], '*', MUST_EXIST);
-        require_login($course, false, $cm);
-        $context = context_module::instance($cm->id);
-        require_capability('mod/aiactivities:create', $context);
-
-        $activityindex = required_param('activityindex', PARAM_INT);
-        $activityjson = required_param('activityjson', PARAM_RAW); // pipeline-ignore: PARAM_RAW — JSON blob, immediately json_decode()d and validated
-
-        $allactivities = json_decode(\mod_aiactivities\manifest_storage::decompress($instance->activitiesjson), true);
-        if (!is_array($allactivities)) {
-            echo json_encode(['ok' => false, 'error' => 'No activities found']);
-            break;
-        }
-
-        if ($activityindex < 0 || $activityindex >= count($allactivities)) {
-            echo json_encode(['ok' => false, 'error' => 'Invalid activity index']);
-            break;
-        }
-
-        $updatedactivity = json_decode($activityjson, true);
-        if (!$updatedactivity || !is_array($updatedactivity)) {
-            echo json_encode(['ok' => false, 'error' => 'Invalid activity data']);
-            break;
-        }
-
-        $allactivities[$activityindex] = $updatedactivity;
-
-        $DB->set_field('aiactivities', 'activitiesjson', \mod_aiactivities\manifest_storage::compress(json_encode($allactivities)), ['id' => $instance->id]);
-        $DB->set_field('aiactivities', 'timemodified', time(), ['id' => $instance->id]);
-
-        echo json_encode(['ok' => true]);
-        break;
-
     default:
-        echo json_encode(['ok' => false, 'error' => 'Unknown action']);
+        echo json_encode(['ok' => false, 'error' => get_string('error_unknown_action', 'mod_aiactivities')]);
+}
+
+/**
+ * Reads the generation options from the current request.
+ *
+ * @return array The generation options.
+ */
+function aiactivities_read_generation_options(): array {
+    return [
+        'language' => optional_param('language', 'en-AU', PARAM_TEXT),
+        'activitycount' => max(5, min(20, optional_param('activitycount', 5, PARAM_INT))),
+        'scenariomode' => optional_param('scenariomode', '0', PARAM_TEXT) === '1',
+        'scenario' => [
+            'scenarioCountry' => trim(optional_param('scenariocountry', '', PARAM_TEXT)),
+            'scenarioIndustry' => trim(optional_param('scenarioindustry', '', PARAM_TEXT)),
+            'scenarioSector' => trim(optional_param('scenariosector', '', PARAM_TEXT)),
+            'scenarioWorkerLevel' => trim(optional_param('scenarioworkerlevel', '', PARAM_TEXT)),
+            'scenarioJobRoles' => trim(optional_param('scenariojobroles', '', PARAM_TEXT)),
+        ],
+        'voiceoverenabled' => optional_param('voiceoverenabled', '0', PARAM_TEXT) === '1',
+        'voicegender' => clean_param(optional_param('voicegender', 'female', PARAM_TEXT), PARAM_TEXT),
+        'voiceid' => clean_param(optional_param('voiceid', 'Zephyr', PARAM_TEXT), PARAM_TEXT),
+    ];
+}
+
+/**
+ * Builds the request payload sent to the generation service.
+ *
+ * @param string $siteid The configured site identifier.
+ * @param string $apikey The configured API key.
+ * @param string $content The learning content to generate from.
+ * @param array $options Options as returned by aiactivities_read_generation_options().
+ * @return array The request payload.
+ */
+function aiactivities_build_generation_payload(
+    string $siteid,
+    string $apikey,
+    string $content,
+    array $options
+): array {
+    $payload = [
+        'siteId' => $siteid,
+        'apiKey' => $apikey,
+        'content' => $content,
+        'language' => $options['language'],
+        'activityCount' => $options['activitycount'],
+    ];
+
+    if (!empty($options['scenariomode'])) {
+        $payload['scenarioMode'] = true;
+        foreach ($options['scenario'] as $key => $value) {
+            if ($value !== '') {
+                $payload[$key] = $value;
+            }
+        }
+    }
+
+    if (!empty($options['voiceoverenabled'])) {
+        $payload['voiceoverEnabled'] = true;
+        $payload['voiceGender'] = $options['voicegender'];
+        $payload['voiceId'] = $options['voiceid'];
+    }
+
+    return $payload;
+}
+
+/**
+ * Stores generated activities and the settings they were generated with.
+ *
+ * @param int $instanceid The aiactivities instance id.
+ * @param array $activities The generated activities.
+ * @param string $content The learning content used, or an empty string to keep the stored one.
+ * @param array $options Options as returned by aiactivities_read_generation_options().
+ * @return void
+ */
+function aiactivities_store_activities(
+    int $instanceid,
+    array $activities,
+    string $content,
+    array $options
+): void {
+    global $DB;
+
+    $update = new stdClass();
+    $update->id = $instanceid;
+    $update->activitiesjson = \mod_aiactivities\manifest_storage::compress(json_encode($activities));
+    $update->language = $options['language'];
+    $update->activitycount = $options['activitycount'];
+    $update->voiceoverenabled = !empty($options['voiceoverenabled']) ? 1 : 0;
+    $update->timemodified = time();
+
+    if (trim($content) !== '') {
+        $update->content = $content;
+    }
+    if (!empty($options['voiceoverenabled'])) {
+        $update->voicegender = $options['voicegender'];
+        $update->voiceid = $options['voiceid'];
+    }
+
+    $DB->update_record('aiactivities', $update);
 }

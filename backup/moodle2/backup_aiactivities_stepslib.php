@@ -15,31 +15,40 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_aiactivities file.
+ * Backup steps for mod_aiactivities.
  *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
+/**
+ * Defines the complete structure for backing up one aiactivities instance.
+ */
 class backup_aiactivities_activity_structure_step extends backup_activity_structure_step {
+    /**
+     * Defines the backup structure.
+     *
+     * @return backup_nested_element The prepared activity structure.
+     */
     protected function define_structure() {
         $userinfo = $this->get_setting_value('userinfo');
 
-        $aiactivities = new backup_nested_element('aiactivities', ['id'], [
+        $instancefields = [
             'name', 'intro', 'introformat', 'grade',
             'content', 'language', 'activitycount', 'activitiesjson',
-            'completionallcorrect', 'timecreated', 'timemodified',
-        ]);
+            'completionallcorrect', 'voiceoverenabled', 'voicegender', 'voiceid',
+            'timecreated', 'timemodified',
+        ];
+        $aiactivities = new backup_nested_element('aiactivities', ['id'], $instancefields);
 
         $attempts = new backup_nested_element('attempts');
-        $attempt = new backup_nested_element('attempt', ['id'], [
+        $attemptfields = [
             'userid', 'progressjson', 'currentactivity',
             'completedcount', 'totalcount', 'score', 'status',
             'timecreated', 'timemodified',
-        ]);
+        ];
+        $attempt = new backup_nested_element('attempt', ['id'], $attemptfields);
 
         $aiactivities->add_child($attempts);
         $attempts->add_child($attempt);

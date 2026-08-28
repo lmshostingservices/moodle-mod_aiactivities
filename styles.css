@@ -1,51 +1,159 @@
+/* stylelint-disable declaration-no-important --
+   The declarations below override Bootstrap rules that Moodle themes apply
+   inside .mod-content at equal or higher specificity (see the notes on the
+   True/False result block and the pill controls). Raising specificity instead
+   was tried and regressed those layouts, so the overrides are deliberate. */
 /* AI Learning Activities - World-Class Player CSS v2.0 */
 /* Premium design system: per-activity accents, glass morphism, dark mode */
 
-:root {
+/* Design tokens are scoped to the plugin's own roots so they never leak into the
+   surrounding Moodle page. Both roots rendered by view.php (#ala-app and
+   #ala-player) carry the .ala-container class, so a single class selector covers
+   every root. A class (not an ID) is used deliberately: the dark-mode overrides
+   below are body-prefixed class selectors and an ID here would out-specify them. */
+.ala-container {
     --ala-primary: #6366f1;
     --ala-primary-light: #818cf8;
     --ala-primary-dark: #4f46e5;
-    --ala-primary-glow: rgba(99,102,241,0.35);
+    --ala-primary-glow: rgba(99, 102, 241, 0.35);
     --ala-success: #10b981;
     --ala-success-light: #d1fae5;
-    --ala-success-glow: rgba(16,185,129,0.3);
+    --ala-success-glow: rgba(16, 185, 129, 0.3);
     --ala-error: #ef4444;
     --ala-error-light: #fee2e2;
-    --ala-error-glow: rgba(239,68,68,0.3);
+    --ala-error-glow: rgba(239, 68, 68, 0.3);
     --ala-warning: #f59e0b;
     --ala-bg: #f8fafc;
-    --ala-card-bg: #ffffff;
+    --ala-card-bg: #fff;
     --ala-border: #e2e8f0;
     --ala-text: #1e293b;
     --ala-text-secondary: #64748b;
     --ala-text-muted: #94a3b8;
-    --ala-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-    --ala-shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
-    --ala-shadow-lg: 0 10px 25px -3px rgba(0,0,0,0.08), 0 4px 10px -4px rgba(0,0,0,0.04);
-    --ala-shadow-xl: 0 20px 40px -4px rgba(0,0,0,0.1), 0 8px 16px -6px rgba(0,0,0,0.06);
+    --ala-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --ala-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --ala-shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 10px -4px rgba(0, 0, 0, 0.04);
+    --ala-shadow-xl: 0 20px 40px -4px rgba(0, 0, 0, 0.1), 0 8px 16px -6px rgba(0, 0, 0, 0.06);
     --ala-radius: 14px;
     --ala-radius-sm: 10px;
     --ala-radius-lg: 18px;
-    --ala-transition: 200ms cubic-bezier(.16,1,.3,1);
-    --ala-spring: 500ms cubic-bezier(.34,1.56,.64,1);
+    --ala-transition: 200ms cubic-bezier(.16, 1, .3, 1);
+    --ala-spring: 500ms cubic-bezier(.34, 1.56, .64, 1);
     --ala-glass: blur(12px) saturate(1.8);
-    --act: var(--ala-primary);
-    --act-light: #e0e7ff;
-    --act-glow: var(--ala-primary-glow);
+    --ala-act: var(--ala-primary);
+    --ala-act-light: #e0e7ff;
+    --ala-act-glow: var(--ala-primary-glow);
 }
 
 /* ==================== ACTIVITY TYPE ACCENT SYSTEM ==================== */
-.ala-cardselect { --act: #3b82f6; --act-light: #dbeafe; --act-glow: rgba(59,130,246,0.3); }
-.ala-columnsort { --act: #10b981; --act-light: #d1fae5; --act-glow: rgba(16,185,129,0.3); }
-.ala-categorysort { --act: #f59e0b; --act-light: #fef3c7; --act-glow: rgba(245,158,11,0.3); }
-.ala-matching { --act: #8b5cf6; --act-light: #ede9fe; --act-glow: rgba(139,92,246,0.3); }
-.ala-ordering { --act: #ec4899; --act-light: #fce7f3; --act-glow: rgba(236,72,153,0.3); }
-.ala-flashcards { --act: #06b6d4; --act-light: #cffafe; --act-glow: rgba(6,182,212,0.3); }
-.ala-truefalseswipe { --act: #6366f1; --act-light: #e0e7ff; --act-glow: rgba(99,102,241,0.3); }
-.ala-fillinblank { --act: #f97316; --act-light: #ffedd5; --act-glow: rgba(249,115,22,0.3); }
+.ala-cardselect {
+    --ala-act: #3b82f6;
+    --ala-act-light: #dbeafe;
+    --ala-act-glow: rgba(59, 130, 246, 0.3);
+}
+.ala-columnsort {
+    --ala-act: #10b981;
+    --ala-act-light: #d1fae5;
+    --ala-act-glow: rgba(16, 185, 129, 0.3);
+}
+.ala-categorysort {
+    --ala-act: #f59e0b;
+    --ala-act-light: #fef3c7;
+    --ala-act-glow: rgba(245, 158, 11, 0.3);
+}
+.ala-matching {
+    --ala-act: #8b5cf6;
+    --ala-act-light: #ede9fe;
+    --ala-act-glow: rgba(139, 92, 246, 0.3);
+}
+.ala-ordering {
+    --ala-act: #ec4899;
+    --ala-act-light: #fce7f3;
+    --ala-act-glow: rgba(236, 72, 153, 0.3);
+}
+.ala-flashcards {
+    --ala-act: #06b6d4;
+    --ala-act-light: #cffafe;
+    --ala-act-glow: rgba(6, 182, 212, 0.3);
+}
+.ala-truefalseswipe {
+    --ala-act: #6366f1;
+    --ala-act-light: #e0e7ff;
+    --ala-act-glow: rgba(99, 102, 241, 0.3);
+}
+.ala-fillinblank {
+    --ala-act: #f97316;
+    --ala-act-light: #ffedd5;
+    --ala-act-glow: rgba(249, 115, 22, 0.3);
+}
+
+/* ==================== NARRATION CONTROLS ==================== */
+/* Icon-only play / mute / stop group, pinned to the top right of the activity
+   card. Each control carries a title and an aria-label so the meaning is
+   available on hover and to assistive tech. */
+.ala-activity {
+    position: relative;
+}
+
+.ala-voiceover-controls {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 2;
+    display: flex;
+    gap: 6px;
+}
+
+.ala-vo-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--ala-border);
+    border-radius: 8px;
+    background: var(--ala-card-bg);
+    color: var(--ala-text-muted);
+    cursor: pointer;
+    transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.ala-vo-btn:hover:not(:disabled) {
+    color: var(--ala-act, var(--ala-primary));
+    border-color: var(--ala-act, var(--ala-primary));
+    background: var(--ala-act-light, var(--ala-card-bg));
+}
+
+.ala-vo-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.ala-vo-btn-active {
+    color: var(--ala-act, var(--ala-primary));
+    border-color: var(--ala-act, var(--ala-primary));
+    background: var(--ala-act-light, var(--ala-card-bg));
+}
+
+@media (max-width: 500px) {
+    .ala-voiceover-controls {
+        top: 10px;
+        right: 10px;
+        gap: 4px;
+    }
+
+    .ala-vo-btn {
+        width: 28px;
+        height: 28px;
+    }
+}
 
 /* ==================== ACTIVITY TYPE BADGE ==================== */
-.ala-activity::before {
+/* a11y/i18n: the badge text used to be printed from CSS `content:` (untranslatable
+   and unreliable for assistive tech). The chrome now lives on a real element that
+   the JS renders with a translated label: <span class="ala-activity-type-badge">. */
+.ala-activity-type-badge {
+    max-width: calc(100% - 130px);
     display: inline-flex;
     align-items: center;
     font-size: 10px;
@@ -55,19 +163,13 @@
     padding: 5px 14px;
     border-radius: 20px;
     margin-bottom: 14px;
-    background: var(--act-light);
-    color: var(--act);
-    border: 1px solid color-mix(in srgb, var(--act) 20%, transparent);
+    background: var(--ala-act-light);
+    color: var(--ala-act);
+    border: 1px solid color-mix(in srgb, var(--ala-act) 20%, transparent);
 }
-.ala-cardselect::before { content: 'Card Select'; }
-.ala-columnsort::before { content: 'Column Sort'; }
-.ala-categorysort::before { content: 'Category Sort'; }
-.ala-matching::before { content: 'Matching Pairs'; }
-.ala-ordering::before { content: 'Put in Order'; }
-.ala-flashcards::before { content: 'Flashcards'; }
-.ala-truefalseswipe::before { content: 'True or False'; }
-.ala-fillinblank::before { content: 'Fill in the Blank'; }
-.ala-review-mode::before { display: none; }
+.ala-review-mode .ala-activity-type-badge {
+    display: none;
+}
 
 /* ==================== CONTAINER ==================== */
 .ala-container {
@@ -94,7 +196,9 @@
     margin-bottom: 16px;
     box-shadow: var(--ala-shadow);
 }
-.ala-credits-icon { opacity: 0.7; }
+.ala-credits-icon {
+    opacity: 0.7;
+}
 .ala-credits-label {
     font-weight: 400;
     color: var(--ala-text-secondary);
@@ -119,7 +223,10 @@
     margin: 0 0 8px 0;
     color: var(--ala-text);
 }
-.ala-card-title svg { color: var(--ala-primary); flex-shrink: 0; }
+.ala-card-title svg {
+    color: var(--ala-primary);
+    flex-shrink: 0;
+}
 .ala-intro {
     color: var(--ala-text-secondary);
     font-size: 15px;
@@ -154,7 +261,7 @@
 .ala-select:focus {
     outline: none;
     border-color: var(--ala-primary);
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 .ala-textarea {
     resize: vertical;
@@ -174,6 +281,7 @@
     flex: 1;
     min-width: 0;
 }
+
 @media (max-width: 600px) {
     .ala-form-row {
         flex-direction: column;
@@ -222,7 +330,7 @@
     background: #fff;
     border-radius: 50%;
     transition: transform 0.2s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 .ala-toggle-checkbox:checked + .ala-toggle-switch {
     background: var(--ala-primary);
@@ -287,11 +395,12 @@
 .ala-input:focus {
     outline: none;
     border-color: var(--ala-primary);
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 .ala-input::placeholder {
     color: var(--ala-text-muted);
 }
+
 @media (max-width: 600px) {
     .ala-form-row-3 {
         flex-direction: column;
@@ -354,7 +463,9 @@
     min-height: 48px;
     text-decoration: none;
 }
-.ala-btn:active { transform: scale(0.97); }
+.ala-btn:active {
+    transform: scale(0.97);
+}
 .ala-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -375,7 +486,7 @@
     border: 1px solid var(--ala-primary);
 }
 .ala-btn-outline:hover:not(:disabled) {
-    background: rgba(99,102,241,0.08);
+    background: rgba(99, 102, 241, 0.08);
     color: var(--ala-primary) !important;
 }
 .ala-form-actions {
@@ -406,7 +517,6 @@
 }
 
 /* ==================== MANAGE CARD ==================== */
-.ala-manage-card {}
 .ala-teacher-info-banner {
     display: flex;
     align-items: flex-start;
@@ -433,10 +543,13 @@
     flex-wrap: wrap;
     margin-bottom: 16px;
 }
-.ala-manage-header .ala-card-title { margin: 0; }
-.ala-manage-header .ala-card-title svg { color: var(--ala-success); }
+.ala-manage-header .ala-card-title {
+    margin: 0;
+}
+.ala-manage-header .ala-card-title svg {
+    color: var(--ala-success);
+}
 
-.ala-activities-preview {}
 .ala-preview-item {
     display: flex;
     align-items: center;
@@ -444,7 +557,9 @@
     padding: 10px 14px;
     border-bottom: 1px solid var(--ala-border);
 }
-.ala-preview-item:last-child { border-bottom: none; }
+.ala-preview-item:last-child {
+    border-bottom: none;
+}
 .ala-preview-num {
     display: flex;
     align-items: center;
@@ -464,7 +579,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--ala-primary);
-    background: rgba(99,102,241,0.08);
+    background: rgba(99, 102, 241, 0.08);
     padding: 3px 8px;
     border-radius: 4px;
     flex-shrink: 0;
@@ -479,10 +594,10 @@
     transition: background 0.15s ease;
 }
 .ala-preview-clickable:hover {
-    background: rgba(99,102,241,0.06);
+    background: rgba(99, 102, 241, 0.06);
 }
 .ala-preview-play {
-    color: var(--ala-muted);
+    color: var(--ala-text-muted);
     flex-shrink: 0;
     transition: color 0.15s ease;
 }
@@ -499,7 +614,7 @@
 }
 .ala-preview-edit:hover {
     color: var(--ala-primary);
-    background: rgba(99,102,241,0.08);
+    background: rgba(99, 102, 241, 0.08);
 }
 .ala-preview-label {
     font-size: 14px;
@@ -538,7 +653,7 @@
 .ala-edit-input:focus {
     outline: none;
     border-color: var(--ala-primary);
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 .ala-edit-subgroup {
     background: var(--ala-bg);
@@ -605,7 +720,7 @@
     border-radius: 5px;
     overflow: hidden;
     border: 1px solid var(--ala-border);
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 .ala-player-progress-fill {
     height: 100%;
@@ -613,12 +728,17 @@
     background-size: 200% 100%;
     animation: ala-progress-shimmer 3s linear infinite;
     border-radius: 5px;
-    transition: width 0.6s cubic-bezier(.16,1,.3,1);
-    box-shadow: 0 0 12px rgba(99,102,241,0.3);
+    transition: width 0.6s cubic-bezier(.16, 1, .3, 1);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
 }
+
 @keyframes ala-progress-shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 /* ==================== PLAYER CONTENT ==================== */
@@ -639,7 +759,12 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--act, var(--ala-primary)), color-mix(in srgb, var(--act, var(--ala-primary)) 60%, #fff));
+    background:
+        linear-gradient(
+            90deg,
+            var(--ala-act, var(--ala-primary)),
+            color-mix(in srgb, var(--ala-act, var(--ala-primary)) 60%, #fff)
+        );
     border-radius: var(--ala-radius-lg) var(--ala-radius-lg) 0 0;
     opacity: 0.85;
 }
@@ -687,6 +812,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 14px;
 }
+
 @media (max-width: 500px) {
     .ala-cards-grid {
         grid-template-columns: 1fr;
@@ -698,7 +824,7 @@
     border-radius: var(--ala-radius);
     padding: 22px 18px;
     cursor: pointer;
-    transition: all 0.25s cubic-bezier(.16,1,.3,1);
+    transition: all 0.25s cubic-bezier(.16, 1, .3, 1);
     text-align: center;
     min-height: 120px;
     display: flex;
@@ -710,23 +836,22 @@
     position: relative;
 }
 .ala-card-option:hover {
-    border-color: var(--act);
-    box-shadow: 0 8px 24px var(--act-glow), 0 2px 8px rgba(0,0,0,0.06);
+    border-color: var(--ala-act);
+    box-shadow: 0 8px 24px var(--ala-act-glow), 0 2px 8px rgba(0, 0, 0, 0.06);
     transform: translateY(-4px);
-    color: var(--ala-text) !important;
 }
 .ala-card-option:active {
     transform: translateY(-1px) scale(0.98);
-    transition-duration: 80ms;
+    transition-duration: 100ms;
 }
 .ala-card-icon {
-    color: var(--act);
+    color: var(--ala-act);
     width: 48px;
     height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--act-light);
+    background: var(--ala-act-light);
     border-radius: 50%;
     flex-shrink: 0;
 }
@@ -743,7 +868,7 @@
 .ala-card-option.ala-correct {
     border-color: var(--ala-success);
     background: var(--ala-success-light);
-    box-shadow: 0 0 0 3px var(--ala-success-glow), 0 8px 20px rgba(16,185,129,0.15);
+    box-shadow: 0 0 0 3px var(--ala-success-glow), 0 8px 20px rgba(16, 185, 129, 0.15);
     animation: ala-pulse-success 0.5s ease;
 }
 .ala-card-option.ala-incorrect {
@@ -760,6 +885,7 @@
     gap: 16px;
     margin-bottom: 16px;
 }
+
 @media (max-width: 500px) {
     .ala-columns-layout {
         grid-template-columns: 1fr;
@@ -777,22 +903,20 @@
 }
 .ala-column-clickable:hover {
     border-color: var(--ala-primary);
-    background: rgba(99,102,241,0.04);
-    color: var(--ala-text) !important;
+    background: rgba(99, 102, 241, 0.04);
 }
 .ala-column.ala-drop-target {
     border-color: var(--ala-primary);
-    background: rgba(99,102,241,0.05);
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    background: rgba(99, 102, 241, 0.05);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 .ala-column-header {
     padding: 14px 16px;
     font-weight: 700;
-    font-size: 15px;
     text-align: center;
     border-bottom: 2px solid var(--ala-border);
     color: var(--ala-text);
-    background: rgba(99,102,241,0.05);
+    background: rgba(99, 102, 241, 0.05);
     border-radius: var(--ala-radius) var(--ala-radius) 0 0;
     display: flex;
     align-items: center;
@@ -806,20 +930,20 @@
     flex-shrink: 0;
 }
 .ala-column-header-a {
-    background: rgba(16,185,129,0.08);
-    border-bottom-color: rgba(16,185,129,0.3);
+    background: rgba(16, 185, 129, 0.08);
+    border-bottom-color: rgba(16, 185, 129, 0.3);
     color: #065f46;
 }
 .ala-column-header-b {
-    background: rgba(239,68,68,0.08);
-    border-bottom-color: rgba(239,68,68,0.3);
+    background: rgba(239, 68, 68, 0.08);
+    border-bottom-color: rgba(239, 68, 68, 0.3);
     color: #991b1b;
 }
 .ala-column-a {
-    border-color: rgba(16,185,129,0.3);
+    border-color: rgba(16, 185, 129, 0.3);
 }
 .ala-column-b {
-    border-color: rgba(239,68,68,0.3);
+    border-color: rgba(239, 68, 68, 0.3);
 }
 .ala-column-items {
     padding: 8px;
@@ -833,24 +957,42 @@
 .ala-current-item {
     display: inline-block;
     padding: 14px 28px;
-    background: linear-gradient(135deg, var(--act, var(--ala-primary)), color-mix(in srgb, var(--act, var(--ala-primary)) 80%, #000));
+    background:
+        linear-gradient(
+            135deg,
+            var(--ala-act, var(--ala-primary)),
+            color-mix(in srgb, var(--ala-act, var(--ala-primary)) 80%, #000)
+        );
     color: #fff;
     border-radius: var(--ala-radius-sm);
     font-size: 15px;
     font-weight: 600;
     cursor: grab;
-    box-shadow: 0 6px 20px var(--act-glow, rgba(99,102,241,0.3)), 0 2px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 6px 20px var(--ala-act-glow, rgba(99, 102, 241, 0.3)), 0 2px 6px rgba(0, 0, 0, 0.1);
     user-select: none;
     max-width: 90%;
-    animation: ala-item-float 2.5s ease-in-out infinite, ala-item-appear 0.3s cubic-bezier(.2,.8,.2,1);
+    animation: ala-item-float 2.5s ease-in-out infinite, ala-item-appear 0.3s cubic-bezier(.2, .8, .2, 1);
 }
+
 @keyframes ala-item-float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-4px);
+    }
 }
+
 @keyframes ala-item-appear {
-    0% { opacity: 0; transform: scale(0.9); }
-    100% { opacity: 1; transform: scale(1); }
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 .ala-current-item.ala-dragging {
     opacity: 0.6;
@@ -866,13 +1008,22 @@
     margin-bottom: 6px;
     color: #065f46;
     font-weight: 600;
-    animation: ala-lock-in 0.35s cubic-bezier(.2,.8,.2,1);
-    box-shadow: 0 1px 3px rgba(16,185,129,0.1);
+    animation: ala-lock-in 0.35s cubic-bezier(.2, .8, .2, 1);
+    box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
 }
+
 @keyframes ala-lock-in {
-    0% { opacity: 0; transform: scale(0.92); }
-    60% { transform: scale(1.03); }
-    100% { opacity: 1; transform: scale(1); }
+    0% {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+    60% {
+        transform: scale(1.03);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 /* ==================== TAP BUTTONS ==================== */
@@ -899,23 +1050,31 @@
     transition: all var(--ala-transition);
     min-height: 48px;
     font-family: inherit;
-    color: var(--ala-text) !important;
     flex: 1;
     min-width: 120px;
 }
 .ala-tap-btn:hover {
     border-color: var(--ala-primary);
-    background: rgba(99,102,241,0.05);
-    color: var(--ala-text) !important;
+    background: rgba(99, 102, 241, 0.05);
 }
 .ala-tap-btn:active {
     transform: scale(0.96);
-    background: rgba(99,102,241,0.1);
+    background: rgba(99, 102, 241, 0.1);
 }
-.ala-tap-btn-a { border-color: rgba(16,185,129,0.5); color: #065f46 !important; background: rgba(16,185,129,0.04); }
-.ala-tap-btn-a:hover { background: rgba(16,185,129,0.12); color: #065f46 !important; }
-.ala-tap-btn-b { border-color: rgba(239,68,68,0.5); color: #991b1b !important; background: rgba(239,68,68,0.04); }
-.ala-tap-btn-b:hover { background: rgba(239,68,68,0.12); color: #991b1b !important; }
+.ala-tap-btn-a {
+    border-color: rgba(16, 185, 129, 0.5);
+    background: rgba(16, 185, 129, 0.04);
+}
+.ala-tap-btn-a:hover {
+    background: rgba(16, 185, 129, 0.12);
+}
+.ala-tap-btn-b {
+    border-color: rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.04);
+}
+.ala-tap-btn-b:hover {
+    background: rgba(239, 68, 68, 0.12);
+}
 
 /* ==================== COLUMN SORT PROGRESS ==================== */
 .ala-columnsort-progress,
@@ -950,6 +1109,7 @@
     gap: 12px;
     margin-bottom: 16px;
 }
+
 @media (max-width: 600px) {
     .ala-categories-grid {
         grid-template-columns: 1fr;
@@ -967,13 +1127,12 @@
 }
 .ala-bucket-clickable:hover {
     border-color: var(--ala-primary);
-    background: rgba(99,102,241,0.04);
-    color: var(--ala-text) !important;
+    background: rgba(99, 102, 241, 0.04);
 }
 .ala-category-bucket.ala-drop-target {
     border-color: var(--ala-primary);
-    background: rgba(99,102,241,0.05);
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    background: rgba(99, 102, 241, 0.05);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 .ala-category-header {
     padding: 12px 14px;
@@ -982,30 +1141,61 @@
     text-align: center;
     border-bottom: 2px solid var(--ala-border);
     color: var(--ala-text);
-    background: rgba(99,102,241,0.05);
+    background: rgba(99, 102, 241, 0.05);
     border-radius: var(--ala-radius) var(--ala-radius) 0 0;
     letter-spacing: 0.5px;
     text-transform: uppercase;
 }
-.ala-category-bucket:nth-child(1) .ala-category-header { background: rgba(59,130,246,0.06); border-bottom-color: rgba(59,130,246,0.2); color: #1e40af; }
-.ala-category-bucket:nth-child(2) .ala-category-header { background: rgba(16,185,129,0.06); border-bottom-color: rgba(16,185,129,0.2); color: #065f46; }
-.ala-category-bucket:nth-child(3) .ala-category-header { background: rgba(245,158,11,0.06); border-bottom-color: rgba(245,158,11,0.2); color: #92400e; }
-.ala-category-bucket:nth-child(4) .ala-category-header { background: rgba(139,92,246,0.06); border-bottom-color: rgba(139,92,246,0.2); color: #5b21b6; }
-.ala-category-bucket:nth-child(1) { border-color: rgba(59,130,246,0.2); }
-.ala-category-bucket:nth-child(2) { border-color: rgba(16,185,129,0.2); }
-.ala-category-bucket:nth-child(3) { border-color: rgba(245,158,11,0.2); }
-.ala-category-bucket:nth-child(4) { border-color: rgba(139,92,246,0.2); }
+.ala-category-bucket:nth-child(1) .ala-category-header {
+    background: rgba(59, 130, 246, 0.06);
+    border-bottom-color: rgba(59, 130, 246, 0.2);
+    color: #1e40af;
+}
+.ala-category-bucket:nth-child(2) .ala-category-header {
+    background: rgba(16, 185, 129, 0.06);
+    border-bottom-color: rgba(16, 185, 129, 0.2);
+    color: #065f46;
+}
+.ala-category-bucket:nth-child(3) .ala-category-header {
+    background: rgba(245, 158, 11, 0.06);
+    border-bottom-color: rgba(245, 158, 11, 0.2);
+    color: #92400e;
+}
+.ala-category-bucket:nth-child(4) .ala-category-header {
+    background: rgba(139, 92, 246, 0.06);
+    border-bottom-color: rgba(139, 92, 246, 0.2);
+    color: #5b21b6;
+}
+.ala-category-bucket:nth-child(1) {
+    border-color: rgba(59, 130, 246, 0.2);
+}
+.ala-category-bucket:nth-child(2) {
+    border-color: rgba(16, 185, 129, 0.2);
+}
+.ala-category-bucket:nth-child(3) {
+    border-color: rgba(245, 158, 11, 0.2);
+}
+.ala-category-bucket:nth-child(4) {
+    border-color: rgba(139, 92, 246, 0.2);
+}
 .ala-category-items {
     padding: 8px;
     min-height: 40px;
 }
 
 /* ==================== MATCHING ==================== */
+/* a11y/i18n: 'Match from' / 'Match to' were printed from CSS `content:`. The JS now
+   renders <span class="ala-matching-col-label"> with a translated string; it is only
+   shown at the narrow breakpoint, exactly as the old ::before rules were. */
+.ala-matching-col-label {
+    display: none;
+}
 .ala-matching-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
 }
+
 @media (max-width: 500px) {
     .ala-matching-layout {
         grid-template-columns: 1fr;
@@ -1014,8 +1204,7 @@
     .ala-matching-col {
         gap: 6px;
     }
-    .ala-matching-left::before,
-    .ala-matching-right::before {
+    .ala-matching-col-label {
         display: block;
         font-size: 11px;
         font-weight: 700;
@@ -1024,11 +1213,7 @@
         color: var(--ala-text-muted);
         padding: 6px 0 2px 2px;
     }
-    .ala-matching-left::before {
-        content: 'Match from';
-    }
-    .ala-matching-right::before {
-        content: 'Match to';
+    .ala-matching-right .ala-matching-col-label {
         margin-top: 8px;
     }
 }
@@ -1045,7 +1230,7 @@
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    transition: all 0.2s cubic-bezier(.2,.8,.2,1);
+    transition: all 0.2s cubic-bezier(.2, .8, .2, 1);
     user-select: none;
     text-align: center;
     min-height: 48px;
@@ -1055,15 +1240,14 @@
     box-shadow: var(--ala-shadow);
 }
 .ala-match-item:hover:not(.ala-matched) {
-    border-color: var(--act);
+    border-color: var(--ala-act);
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px var(--act-glow), 0 1px 3px rgba(0,0,0,0.06);
-    color: var(--ala-text) !important;
+    box-shadow: 0 6px 18px var(--ala-act-glow), 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 .ala-match-item.ala-selected {
-    border-color: var(--act);
-    background: var(--act-light);
-    box-shadow: 0 0 0 3px var(--act-glow);
+    border-color: var(--ala-act);
+    background: var(--ala-act-light);
+    box-shadow: 0 0 0 3px var(--ala-act-glow);
     transform: scale(1.03);
 }
 .ala-match-item.ala-matched {
@@ -1071,16 +1255,16 @@
     background: var(--ala-success-light);
     color: #065f46;
     cursor: default;
-    box-shadow: 0 2px 8px rgba(16,185,129,0.12);
-    animation: ala-lock-in 0.35s cubic-bezier(.34,1.56,.64,1);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
+    animation: ala-lock-in 0.35s cubic-bezier(.34, 1.56, .64, 1);
 }
 .ala-match-left {
-    border-color: rgba(99,102,241,0.35);
-    background: rgba(99,102,241,0.03);
+    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.03);
 }
 .ala-match-right {
-    border-color: rgba(245,158,11,0.35);
-    background: rgba(245,158,11,0.03);
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.03);
 }
 .ala-match-left.ala-matched {
     border-color: var(--ala-success);
@@ -1108,21 +1292,20 @@
     border-radius: var(--ala-radius-sm);
     cursor: grab;
     font-size: 15px;
-    transition: all 0.2s cubic-bezier(.2,.8,.2,1);
+    transition: all 0.2s cubic-bezier(.2, .8, .2, 1);
     user-select: none;
     min-height: 52px;
     box-shadow: var(--ala-shadow);
 }
 .ala-order-item:hover {
-    border-color: var(--act);
-    box-shadow: 0 6px 18px var(--act-glow), 0 1px 3px rgba(0,0,0,0.06);
+    border-color: var(--ala-act);
+    box-shadow: 0 6px 18px var(--ala-act-glow), 0 1px 3px rgba(0, 0, 0, 0.06);
     transform: translateY(-2px);
-    color: var(--ala-text) !important;
 }
 .ala-order-item.ala-selected {
-    border-color: var(--act);
-    background: var(--act-light);
-    box-shadow: 0 0 0 3px var(--act-glow);
+    border-color: var(--ala-act);
+    background: var(--ala-act-light);
+    box-shadow: 0 0 0 3px var(--ala-act-glow);
     transform: scale(1.01);
 }
 .ala-order-item.ala-dragging {
@@ -1133,18 +1316,18 @@
 .ala-order-item.ala-drop-target {
     border-color: var(--ala-primary);
     border-style: dashed;
-    background: rgba(99,102,241,0.03);
+    background: rgba(99, 102, 241, 0.03);
 }
 .ala-order-item.ala-correct {
     border-color: var(--ala-success);
     background: var(--ala-success-light);
-    box-shadow: 0 1px 3px rgba(16,185,129,0.1);
-    animation: ala-lock-in 0.35s cubic-bezier(.2,.8,.2,1);
+    box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
+    animation: ala-lock-in 0.35s cubic-bezier(.2, .8, .2, 1);
 }
 .ala-order-item.ala-incorrect {
     border-color: var(--ala-error);
     background: var(--ala-error-light);
-    box-shadow: 0 0 0 3px rgba(239,68,68,0.12);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
 }
 .ala-order-handle {
     color: var(--ala-text-muted);
@@ -1193,17 +1376,17 @@
     height: 10px;
     border-radius: 50%;
     background: var(--ala-border);
-    transition: all 0.35s cubic-bezier(.34,1.56,.64,1);
+    transition: all 0.35s cubic-bezier(.34, 1.56, .64, 1);
     flex-shrink: 0;
 }
 .ala-fc-dot-active {
-    background: var(--act);
+    background: var(--ala-act);
     transform: scale(1.4);
-    box-shadow: 0 0 0 4px var(--act-glow);
+    box-shadow: 0 0 0 4px var(--ala-act-glow);
 }
 .ala-fc-dot-done {
     background: var(--ala-success);
-    box-shadow: 0 0 0 2px rgba(16,185,129,0.15);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
 }
 .ala-fc-counter {
     font-size: 13px;
@@ -1220,7 +1403,7 @@
     position: relative;
     min-height: 220px;
     cursor: pointer;
-    transition: transform 0.6s cubic-bezier(.4,.0,.2,1);
+    transition: transform 0.6s cubic-bezier(.4, .0, .2, 1);
     transform-style: preserve-3d;
     border-radius: 16px;
 }
@@ -1244,19 +1427,19 @@
     box-sizing: border-box;
 }
 .ala-flashcard-front {
-    background: #ffffff;
+    background: #fff;
     border: 1px solid #e2e8f0;
-    border-top: 3px solid var(--act);
+    border-top: 3px solid var(--ala-act);
     color: var(--ala-text);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 .ala-flashcard-back {
-    background: #ffffff;
+    background: #fff;
     border: 1px solid #e2e8f0;
     border-top: 3px solid var(--ala-success);
     color: var(--ala-text);
     transform: rotateY(180deg);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 .ala-flashcard-number {
     position: absolute;
@@ -1270,12 +1453,21 @@
 .ala-flashcard-back-icon {
     color: var(--ala-success);
     margin-bottom: 8px;
-    animation: ala-fc-icon-pop 0.4s cubic-bezier(.2,.8,.2,1);
+    animation: ala-fc-icon-pop 0.4s cubic-bezier(.2, .8, .2, 1);
 }
+
 @keyframes ala-fc-icon-pop {
-    0% { transform: scale(0); opacity: 0; }
-    60% { transform: scale(1.2); }
-    100% { transform: scale(1); opacity: 1; }
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 .ala-flashcard-label {
     font-size: 11px;
@@ -1335,20 +1527,33 @@ body.dark .ala-flashcard-number {
     gap: 6px;
     animation: ala-fc-pulse 2s ease-in-out infinite;
 }
+
 @keyframes ala-fc-pulse {
-    0%, 100% { opacity: 0.55; }
-    50% { opacity: 0.85; }
+    0%,
+    100% {
+        opacity: 0.55;
+    }
+    50% {
+        opacity: 0.85;
+    }
 }
 .ala-flashcard-actions {
     text-align: center;
     margin-top: 20px;
 }
 .ala-fc-actions-appear {
-    animation: ala-fc-appear 0.35s cubic-bezier(.2,.8,.2,1);
+    animation: ala-fc-appear 0.35s cubic-bezier(.2, .8, .2, 1);
 }
+
 @keyframes ala-fc-appear {
-    0% { opacity: 0; transform: translateY(12px); }
-    100% { opacity: 1; transform: translateY(0); }
+    0% {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 .ala-fc-next-btn {
     display: inline-flex;
@@ -1358,18 +1563,32 @@ body.dark .ala-flashcard-number {
     justify-content: center;
 }
 .ala-fc-slide-out {
-    animation: ala-fc-slideOut 0.3s cubic-bezier(.4,.0,1,1) forwards;
+    animation: ala-fc-slideOut 0.3s cubic-bezier(.4, .0, 1, 1) forwards;
 }
+
 @keyframes ala-fc-slideOut {
-    0% { opacity: 1; transform: translateX(0) scale(1); }
-    100% { opacity: 0; transform: translateX(-60px) scale(0.95); }
+    0% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-60px) scale(0.95);
+    }
 }
 .ala-fc-slide-in {
-    animation: ala-fc-slideIn 0.35s cubic-bezier(.0,.0,.2,1);
+    animation: ala-fc-slideIn 0.35s cubic-bezier(.0, .0, .2, 1);
 }
+
 @keyframes ala-fc-slideIn {
-    0% { opacity: 0; transform: translateX(60px) scale(0.95); }
-    100% { opacity: 1; transform: translateX(0) scale(1); }
+    0% {
+        opacity: 0;
+        transform: translateX(60px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
 }
 .ala-review-flashcards-list {
     display: flex;
@@ -1412,9 +1631,9 @@ body.dark .ala-flashcard-number {
     border-radius: var(--ala-radius);
     padding: 36px 32px;
     box-shadow: var(--ala-shadow-md);
-    transition: all 0.25s cubic-bezier(.16,1,.3,1);
+    transition: all 0.25s cubic-bezier(.16, 1, .3, 1);
     position: relative;
-    border-top: 3px solid var(--act);
+    border-top: 3px solid var(--ala-act);
 }
 .ala-tfs-statement {
     font-size: 18px;
@@ -1619,20 +1838,19 @@ body.dark .ala-flashcard-number {
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(.2,.8,.2,1);
+    transition: all 0.2s cubic-bezier(.2, .8, .2, 1);
     flex: 1;
     max-width: 200px;
     justify-content: center;
     min-height: 54px;
-    box-shadow: 0 2px 8px rgba(239,68,68,0.1);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
     font-family: inherit;
 }
 .ala-tfs-btn-false:hover {
     background: #fee2e2;
     border-color: #ef4444;
-    color: #b91c1c !important;
     transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(239,68,68,0.15);
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.15);
 }
 .ala-tfs-btn-false:active {
     transform: translateY(0) scale(0.97);
@@ -1649,20 +1867,19 @@ body.dark .ala-flashcard-number {
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(.2,.8,.2,1);
+    transition: all 0.2s cubic-bezier(.2, .8, .2, 1);
     flex: 1;
     max-width: 200px;
     justify-content: center;
     min-height: 54px;
-    box-shadow: 0 2px 8px rgba(16,185,129,0.1);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
     font-family: inherit;
 }
 .ala-tfs-btn-true:hover {
     background: #dcfce7;
     border-color: #22c55e;
-    color: #15803d !important;
     transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(16,185,129,0.15);
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);
 }
 .ala-tfs-btn-true:active {
     transform: translateY(0) scale(0.97);
@@ -1732,21 +1949,27 @@ body.dark .ala-flashcard-number {
 }
 .ala-fib-empty {
     background: #f1f5f9;
-    border: 2px dashed var(--act);
-    color: var(--act);
+    border: 2px dashed var(--ala-act);
+    color: var(--ala-act);
 }
 .ala-fib-empty.ala-selected {
-    border-color: var(--act);
-    background: var(--act-light);
-    box-shadow: 0 0 0 3px var(--act-glow);
+    border-color: var(--ala-act);
+    background: var(--ala-act-light);
+    box-shadow: 0 0 0 3px var(--ala-act-glow);
     animation: ala-blank-pulse 1.5s ease-in-out infinite;
 }
+
 @keyframes ala-blank-pulse {
-    0%, 100% { box-shadow: 0 0 0 3px var(--act-glow); }
-    50% { box-shadow: 0 0 0 6px var(--act-glow); }
+    0%,
+    100% {
+        box-shadow: 0 0 0 3px var(--ala-act-glow);
+    }
+    50% {
+        box-shadow: 0 0 0 6px var(--ala-act-glow);
+    }
 }
 .ala-fib-filled {
-    background: rgba(99,102,241,0.08);
+    background: rgba(99, 102, 241, 0.08);
     border: 2px solid var(--ala-primary-light);
     color: var(--ala-primary-dark);
 }
@@ -1788,16 +2011,15 @@ body.dark .ala-flashcard-number {
     font-weight: 600;
     color: var(--ala-text);
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(.2,.8,.2,1);
+    transition: all 0.2s cubic-bezier(.2, .8, .2, 1);
     min-height: 40px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 .ala-fib-word:hover {
-    border-color: var(--act);
-    background: rgba(99,102,241,0.06);
+    border-color: var(--ala-act);
+    background: rgba(99, 102, 241, 0.06);
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px var(--act-glow);
-    color: var(--ala-text) !important;
+    box-shadow: 0 6px 16px var(--ala-act-glow);
 }
 .ala-fib-word:active {
     transform: translateY(0) scale(0.97);
@@ -1838,11 +2060,18 @@ body.dark .ala-flashcard-number {
    Specificity (0,2,0) = two pseudo/class selectors — beats Bootstrap utility classes. */
 .ala-player-feedback:not(.ala-feedback-hidden) {
     display: flex !important;
-    animation: ala-pop-in 0.35s cubic-bezier(.2,.8,.2,1);
+    animation: ala-pop-in 0.35s cubic-bezier(.2, .8, .2, 1);
 }
+
 @keyframes ala-pop-in {
-    0% { opacity: 0; transform: scale(0.8); }
-    100% { opacity: 1; transform: scale(1); }
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 .ala-feedback-content {
     display: flex !important;
@@ -1860,14 +2089,14 @@ body.dark .ala-flashcard-number {
     text-align: center !important;
 }
 .ala-feedback-correct .ala-feedback-content {
-    background: linear-gradient(135deg, rgba(16,185,129,0.92), rgba(5,150,105,0.92));
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.92), rgba(5, 150, 105, 0.92));
     color: #fff;
-    box-shadow: 0 8px 30px rgba(16,185,129,0.35), 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.35), 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 .ala-feedback-incorrect .ala-feedback-content {
-    background: linear-gradient(135deg, rgba(239,68,68,0.92), rgba(220,38,38,0.92));
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.92), rgba(220, 38, 38, 0.92));
     color: #fff;
-    box-shadow: 0 8px 30px rgba(239,68,68,0.35), 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 30px rgba(239, 68, 68, 0.35), 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 .ala-feedback-icon {
     font-size: 20px;
@@ -1896,37 +2125,65 @@ body.dark .ala-flashcard-number {
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(16,185,129,0.06) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.06) 0%, transparent 70%);
     animation: ala-complete-glow 4s ease-in-out infinite;
 }
+
 @keyframes ala-complete-bg {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
 }
+
 @keyframes ala-complete-glow {
-    0%, 100% { transform: translate(0, 0); }
-    50% { transform: translate(10%, 10%); }
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+    50% {
+        transform: translate(10%, 10%);
+    }
 }
 .ala-complete-content {
     text-align: center;
-    animation: ala-complete-entrance 0.7s cubic-bezier(.16,1,.3,1);
+    animation: ala-complete-entrance 0.7s cubic-bezier(.16, 1, .3, 1);
     position: relative;
     z-index: 1;
 }
+
 @keyframes ala-complete-entrance {
-    0% { opacity: 0; transform: translateY(24px) scale(0.92); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
+    0% {
+        opacity: 0;
+        transform: translateY(24px) scale(0.92);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 .ala-complete-icon {
     color: var(--ala-success);
     margin-bottom: 20px;
-    animation: ala-complete-icon-pop 0.6s 0.2s cubic-bezier(.34,1.56,.64,1) both;
-    filter: drop-shadow(0 4px 12px rgba(16,185,129,0.3));
+    animation: ala-complete-icon-pop 0.6s 0.2s cubic-bezier(.34, 1.56, .64, 1) both;
+    filter: drop-shadow(0 4px 12px rgba(16, 185, 129, 0.3));
 }
+
 @keyframes ala-complete-icon-pop {
-    0% { transform: scale(0) rotate(-20deg); opacity: 0; }
-    60% { transform: scale(1.2) rotate(5deg); }
-    100% { transform: scale(1) rotate(0); opacity: 1; }
+    0% {
+        transform: scale(0) rotate(-20deg);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.2) rotate(5deg);
+    }
+    100% {
+        transform: scale(1) rotate(0);
+        opacity: 1;
+    }
 }
 .ala-complete-title {
     font-size: 32px;
@@ -1995,41 +2252,85 @@ body.dark .ala-flashcard-number {
 
 /* ==================== ANIMATIONS ==================== */
 @keyframes ala-shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-    20%, 40%, 60%, 80% { transform: translateX(4px); }
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-4px);
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(4px);
+    }
 }
 .ala-shake {
     animation: ala-shake 0.5s ease !important;
 }
 
 @keyframes ala-pulse-success {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.03); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.03);
+    }
+    100% {
+        transform: scale(1);
+    }
 }
 
 @keyframes ala-slide-up {
-    0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
-    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
 }
 
 @keyframes ala-scale-in {
-    0% { opacity: 0; transform: scale(0.8); }
-    100% { opacity: 1; transform: scale(1); }
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 @keyframes ala-fade-in {
-    0% { opacity: 0; transform: translateY(-5px); }
-    100% { opacity: 1; transform: translateY(0); }
+    0% {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes ala-slide-in-right {
-    0% { opacity: 0; transform: translateX(30px); }
-    100% { opacity: 1; transform: translateX(0); }
+    0% {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 .ala-animate-slide-in {
-    animation: ala-slide-in-right 0.4s cubic-bezier(.2,.8,.2,1);
+    animation: ala-slide-in-right 0.4s cubic-bezier(.2, .8, .2, 1);
 }
 
 /* ==================== TABLET OPTIMISATIONS ==================== */
@@ -2308,15 +2609,15 @@ button.ala-level-pill:hover,
 .ala-level-pill:hover {
     border-color: #6366f1 !important;
     color: #6366f1 !important;
-    background: rgba(99,102,241,0.08) !important;
-    background-color: rgba(99,102,241,0.08) !important;
+    background: rgba(99, 102, 241, 0.08) !important;
+    background-color: rgba(99, 102, 241, 0.08) !important;
 }
 button.ala-level-pill.ala-level-active,
 .ala-level-pill.ala-level-active {
     background: #6366f1 !important;
     background-color: #6366f1 !important;
     border-color: #6366f1 !important;
-    color: #ffffff !important;
+    color: #fff !important;
 }
 
 /* ── Job Role Chips ──────────────────────────────────────────────────── */
@@ -2331,8 +2632,8 @@ button.ala-level-pill.ala-level-active,
     display: inline-flex !important;
     align-items: center !important;
     gap: 4px !important;
-    background: rgba(99,102,241,0.12) !important;
-    background-color: rgba(99,102,241,0.12) !important;
+    background: rgba(99, 102, 241, 0.12) !important;
+    background-color: rgba(99, 102, 241, 0.12) !important;
     color: #4f46e5 !important;
     border-radius: 999px !important;
     padding: 3px 10px !important;
@@ -2350,7 +2651,9 @@ button.ala-chip-remove,
     padding: 0 0 0 2px !important;
     opacity: 0.7;
 }
-.ala-chip-remove:hover { opacity: 1; }
+.ala-chip-remove:hover {
+    opacity: 1;
+}
 
 /* ==================== MOODLE DARK MODE ==================== */
 /* Supports Moodle 4+ dark theme via body[data-bs-theme="dark"] and body.dark */
@@ -2362,29 +2665,45 @@ body.dark .ala-container {
     --ala-text: #e4e5f1;
     --ala-text-secondary: #9ca0b8;
     --ala-text-muted: #6b6f8a;
-    --ala-success-light: rgba(16,185,129,0.12);
-    --ala-error-light: rgba(239,68,68,0.12);
-    --ala-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-    --ala-shadow-md: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
-    --ala-shadow-lg: 0 10px 25px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.2);
-    --ala-shadow-xl: 0 20px 40px rgba(0,0,0,0.4), 0 8px 16px rgba(0,0,0,0.25);
+    --ala-success-light: rgba(16, 185, 129, 0.12);
+    --ala-error-light: rgba(239, 68, 68, 0.12);
+    --ala-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+    --ala-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+    --ala-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.35), 0 4px 10px rgba(0, 0, 0, 0.2);
+    --ala-shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.4), 0 8px 16px rgba(0, 0, 0, 0.25);
 }
 body[data-bs-theme="dark"] .ala-cardselect,
-body.dark .ala-cardselect { --act-light: rgba(59,130,246,0.12); }
+body.dark .ala-cardselect {
+    --ala-act-light: rgba(59, 130, 246, 0.12);
+}
 body[data-bs-theme="dark"] .ala-columnsort,
-body.dark .ala-columnsort { --act-light: rgba(16,185,129,0.12); }
+body.dark .ala-columnsort {
+    --ala-act-light: rgba(16, 185, 129, 0.12);
+}
 body[data-bs-theme="dark"] .ala-categorysort,
-body.dark .ala-categorysort { --act-light: rgba(245,158,11,0.12); }
+body.dark .ala-categorysort {
+    --ala-act-light: rgba(245, 158, 11, 0.12);
+}
 body[data-bs-theme="dark"] .ala-matching,
-body.dark .ala-matching { --act-light: rgba(139,92,246,0.12); }
+body.dark .ala-matching {
+    --ala-act-light: rgba(139, 92, 246, 0.12);
+}
 body[data-bs-theme="dark"] .ala-ordering,
-body.dark .ala-ordering { --act-light: rgba(236,72,153,0.12); }
+body.dark .ala-ordering {
+    --ala-act-light: rgba(236, 72, 153, 0.12);
+}
 body[data-bs-theme="dark"] .ala-flashcards,
-body.dark .ala-flashcards { --act-light: rgba(6,182,212,0.12); }
+body.dark .ala-flashcards {
+    --ala-act-light: rgba(6, 182, 212, 0.12);
+}
 body[data-bs-theme="dark"] .ala-truefalseswipe,
-body.dark .ala-truefalseswipe { --act-light: rgba(99,102,241,0.12); }
+body.dark .ala-truefalseswipe {
+    --ala-act-light: rgba(99, 102, 241, 0.12);
+}
 body[data-bs-theme="dark"] .ala-fillinblank,
-body.dark .ala-fillinblank { --act-light: rgba(249,115,22,0.12); }
+body.dark .ala-fillinblank {
+    --ala-act-light: rgba(249, 115, 22, 0.12);
+}
 
 body[data-bs-theme="dark"] .ala-player-content::after,
 body.dark .ala-player-content::after {
@@ -2402,22 +2721,26 @@ body.dark .ala-card-option {
     border-color: var(--ala-border);
 }
 body[data-bs-theme="dark"] .ala-card-label,
-body.dark .ala-card-label { color: var(--ala-text); }
+body.dark .ala-card-label {
+    color: var(--ala-text);
+}
 body[data-bs-theme="dark"] .ala-card-desc,
-body.dark .ala-card-desc { color: var(--ala-text-secondary); }
+body.dark .ala-card-desc {
+    color: var(--ala-text-secondary);
+}
 body[data-bs-theme="dark"] .ala-card-option:hover,
 body.dark .ala-card-option:hover {
-    background: rgba(255,255,255,0.03);
-    color: var(--ala-text) !important;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--ala-text);
 }
 body[data-bs-theme="dark"] .ala-card-option.ala-correct,
 body.dark .ala-card-option.ala-correct {
-    background: rgba(16,185,129,0.12);
+    background: rgba(16, 185, 129, 0.12);
     border-color: var(--ala-success);
 }
 body[data-bs-theme="dark"] .ala-card-option.ala-incorrect,
 body.dark .ala-card-option.ala-incorrect {
-    background: rgba(239,68,68,0.12);
+    background: rgba(239, 68, 68, 0.12);
     border-color: var(--ala-error);
 }
 body[data-bs-theme="dark"] .ala-column,
@@ -2427,23 +2750,31 @@ body.dark .ala-column {
 }
 body[data-bs-theme="dark"] .ala-column-header,
 body.dark .ala-column-header {
-    background: rgba(255,255,255,0.04);
+    background: rgba(255, 255, 255, 0.04);
     border-bottom-color: var(--ala-border);
     color: var(--ala-text);
 }
 body[data-bs-theme="dark"] .ala-column-header-a,
-body.dark .ala-column-header-a { color: #93c5fd; background: rgba(59,130,246,0.08); border-bottom-color: rgba(59,130,246,0.2); }
+body.dark .ala-column-header-a {
+    color: #93c5fd;
+    background: rgba(59, 130, 246, 0.08);
+    border-bottom-color: rgba(59, 130, 246, 0.2);
+}
 body[data-bs-theme="dark"] .ala-column-header-b,
-body.dark .ala-column-header-b { color: #fdba74; background: rgba(245,158,11,0.08); border-bottom-color: rgba(245,158,11,0.2); }
+body.dark .ala-column-header-b {
+    color: #fdba74;
+    background: rgba(245, 158, 11, 0.08);
+    border-bottom-color: rgba(245, 158, 11, 0.2);
+}
 body[data-bs-theme="dark"] .ala-col-item,
 body.dark .ala-col-item {
-    background: rgba(255,255,255,0.04);
+    background: rgba(255, 255, 255, 0.04);
     border-color: var(--ala-border);
     color: var(--ala-text);
 }
 body[data-bs-theme="dark"] .ala-current-item,
 body.dark .ala-current-item {
-    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
 }
 body[data-bs-theme="dark"] .ala-category-bucket,
 body.dark .ala-category-bucket {
@@ -2452,26 +2783,58 @@ body.dark .ala-category-bucket {
 }
 body[data-bs-theme="dark"] .ala-category-header,
 body.dark .ala-category-header {
-    background: rgba(255,255,255,0.04);
+    background: rgba(255, 255, 255, 0.04);
     border-bottom-color: var(--ala-border);
     color: var(--ala-text);
 }
-body[data-bs-theme="dark"] .ala-category-bucket:nth-child(1) .ala-category-header { background: rgba(59,130,246,0.08); color: #93c5fd; }
-body[data-bs-theme="dark"] .ala-category-bucket:nth-child(2) .ala-category-header { background: rgba(16,185,129,0.08); color: #6ee7b7; }
-body[data-bs-theme="dark"] .ala-category-bucket:nth-child(3) .ala-category-header { background: rgba(245,158,11,0.08); color: #fbbf24; }
-body[data-bs-theme="dark"] .ala-category-bucket:nth-child(4) .ala-category-header { background: rgba(139,92,246,0.08); color: #c4b5fd; }
-body.dark .ala-category-bucket:nth-child(1) .ala-category-header { background: rgba(59,130,246,0.08); color: #93c5fd; }
-body.dark .ala-category-bucket:nth-child(2) .ala-category-header { background: rgba(16,185,129,0.08); color: #6ee7b7; }
-body.dark .ala-category-bucket:nth-child(3) .ala-category-header { background: rgba(245,158,11,0.08); color: #fbbf24; }
-body.dark .ala-category-bucket:nth-child(4) .ala-category-header { background: rgba(139,92,246,0.08); color: #c4b5fd; }
+body[data-bs-theme="dark"] .ala-category-bucket:nth-child(1) .ala-category-header {
+    background: rgba(59, 130, 246, 0.08);
+    color: #93c5fd;
+}
+body[data-bs-theme="dark"] .ala-category-bucket:nth-child(2) .ala-category-header {
+    background: rgba(16, 185, 129, 0.08);
+    color: #6ee7b7;
+}
+body[data-bs-theme="dark"] .ala-category-bucket:nth-child(3) .ala-category-header {
+    background: rgba(245, 158, 11, 0.08);
+    color: #fbbf24;
+}
+body[data-bs-theme="dark"] .ala-category-bucket:nth-child(4) .ala-category-header {
+    background: rgba(139, 92, 246, 0.08);
+    color: #c4b5fd;
+}
+body.dark .ala-category-bucket:nth-child(1) .ala-category-header {
+    background: rgba(59, 130, 246, 0.08);
+    color: #93c5fd;
+}
+body.dark .ala-category-bucket:nth-child(2) .ala-category-header {
+    background: rgba(16, 185, 129, 0.08);
+    color: #6ee7b7;
+}
+body.dark .ala-category-bucket:nth-child(3) .ala-category-header {
+    background: rgba(245, 158, 11, 0.08);
+    color: #fbbf24;
+}
+body.dark .ala-category-bucket:nth-child(4) .ala-category-header {
+    background: rgba(139, 92, 246, 0.08);
+    color: #c4b5fd;
+}
 body[data-bs-theme="dark"] .ala-category-bucket:nth-child(1),
-body.dark .ala-category-bucket:nth-child(1) { border-color: rgba(59,130,246,0.25); }
+body.dark .ala-category-bucket:nth-child(1) {
+    border-color: rgba(59, 130, 246, 0.25);
+}
 body[data-bs-theme="dark"] .ala-category-bucket:nth-child(2),
-body.dark .ala-category-bucket:nth-child(2) { border-color: rgba(16,185,129,0.25); }
+body.dark .ala-category-bucket:nth-child(2) {
+    border-color: rgba(16, 185, 129, 0.25);
+}
 body[data-bs-theme="dark"] .ala-category-bucket:nth-child(3),
-body.dark .ala-category-bucket:nth-child(3) { border-color: rgba(245,158,11,0.25); }
+body.dark .ala-category-bucket:nth-child(3) {
+    border-color: rgba(245, 158, 11, 0.25);
+}
 body[data-bs-theme="dark"] .ala-category-bucket:nth-child(4),
-body.dark .ala-category-bucket:nth-child(4) { border-color: rgba(139,92,246,0.25); }
+body.dark .ala-category-bucket:nth-child(4) {
+    border-color: rgba(139, 92, 246, 0.25);
+}
 body[data-bs-theme="dark"] .ala-match-item,
 body.dark .ala-match-item {
     background: var(--ala-card-bg);
@@ -2480,24 +2843,24 @@ body.dark .ala-match-item {
 }
 body[data-bs-theme="dark"] .ala-match-left,
 body.dark .ala-match-left {
-    border-color: rgba(99,102,241,0.3);
-    background: rgba(99,102,241,0.06);
+    border-color: rgba(99, 102, 241, 0.3);
+    background: rgba(99, 102, 241, 0.06);
 }
 body[data-bs-theme="dark"] .ala-match-right,
 body.dark .ala-match-right {
-    border-color: rgba(245,158,11,0.3);
-    background: rgba(245,158,11,0.06);
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.06);
 }
 body[data-bs-theme="dark"] .ala-match-item.ala-matched,
 body.dark .ala-match-item.ala-matched {
-    background: rgba(16,185,129,0.1);
+    background: rgba(16, 185, 129, 0.1);
     color: #6ee7b7;
 }
 body[data-bs-theme="dark"] .ala-match-left.ala-matched,
 body.dark .ala-match-left.ala-matched,
 body[data-bs-theme="dark"] .ala-match-right.ala-matched,
 body.dark .ala-match-right.ala-matched {
-    background: rgba(16,185,129,0.1);
+    background: rgba(16, 185, 129, 0.1);
 }
 body[data-bs-theme="dark"] .ala-order-item,
 body.dark .ala-order-item {
@@ -2507,12 +2870,12 @@ body.dark .ala-order-item {
 }
 body[data-bs-theme="dark"] .ala-order-item.ala-correct,
 body.dark .ala-order-item.ala-correct {
-    background: rgba(16,185,129,0.1);
+    background: rgba(16, 185, 129, 0.1);
     color: #6ee7b7;
 }
 body[data-bs-theme="dark"] .ala-order-item.ala-incorrect,
 body.dark .ala-order-item.ala-incorrect {
-    background: rgba(239,68,68,0.1);
+    background: rgba(239, 68, 68, 0.1);
     color: #fca5a5;
 }
 body[data-bs-theme="dark"] .ala-flashcard-front,
@@ -2529,7 +2892,7 @@ body.dark .ala-flashcard-back {
 }
 body[data-bs-theme="dark"] .ala-flashcard-number,
 body.dark .ala-flashcard-number {
-    background: rgba(255,255,255,0.08);
+    background: rgba(255, 255, 255, 0.08);
     color: var(--ala-text-muted);
 }
 body[data-bs-theme="dark"] .ala-tfs-statement-text,
@@ -2538,14 +2901,14 @@ body.dark .ala-tfs-statement-text {
 }
 body[data-bs-theme="dark"] .ala-tfs-btn-true,
 body.dark .ala-tfs-btn-true {
-    background: rgba(16,185,129,0.1);
-    border-color: rgba(16,185,129,0.3);
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
     color: #6ee7b7;
 }
 body[data-bs-theme="dark"] .ala-tfs-btn-false,
 body.dark .ala-tfs-btn-false {
-    background: rgba(239,68,68,0.1);
-    border-color: rgba(239,68,68,0.3);
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
     color: #fca5a5;
 }
 body[data-bs-theme="dark"] .ala-fib-blank,
@@ -2554,21 +2917,21 @@ body.dark .ala-fib-blank {
 }
 body[data-bs-theme="dark"] .ala-fib-empty,
 body.dark .ala-fib-empty {
-    background: rgba(255,255,255,0.04);
+    background: rgba(255, 255, 255, 0.04);
 }
 body[data-bs-theme="dark"] .ala-fib-filled,
 body.dark .ala-fib-filled {
-    background: rgba(99,102,241,0.12);
+    background: rgba(99, 102, 241, 0.12);
     color: #a5b4fc;
 }
 body[data-bs-theme="dark"] .ala-fib-correct,
 body.dark .ala-fib-correct {
-    background: rgba(16,185,129,0.12);
+    background: rgba(16, 185, 129, 0.12);
     color: #6ee7b7;
 }
 body[data-bs-theme="dark"] .ala-fib-incorrect,
 body.dark .ala-fib-incorrect {
-    background: rgba(239,68,68,0.12);
+    background: rgba(239, 68, 68, 0.12);
     color: #fca5a5;
 }
 body[data-bs-theme="dark"] .ala-fib-word,
@@ -2579,13 +2942,13 @@ body.dark .ala-fib-word {
 }
 body[data-bs-theme="dark"] .ala-fib-word-used,
 body.dark .ala-fib-word-used {
-    background: rgba(255,255,255,0.02);
+    background: rgba(255, 255, 255, 0.02);
     color: var(--ala-text-muted);
     border-color: var(--ala-border);
 }
 body[data-bs-theme="dark"] .ala-player-progress-bar,
 body.dark .ala-player-progress-bar {
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
     border-color: var(--ala-border);
 }
 body[data-bs-theme="dark"] .ala-btn-primary,
@@ -2595,23 +2958,34 @@ body.dark .ala-btn-primary {
 }
 body[data-bs-theme="dark"] .ala-btn-secondary,
 body.dark .ala-btn-secondary {
-    background: rgba(255,255,255,0.06);
+    background: rgba(255, 255, 255, 0.06);
     border-color: var(--ala-border);
     color: var(--ala-text);
 }
 body[data-bs-theme="dark"] .ala-complete-screen,
 body.dark .ala-complete-screen {
-    background: linear-gradient(135deg, rgba(16,185,129,0.08) 0%, var(--ala-card-bg) 30%, rgba(99,102,241,0.08) 60%, rgba(59,130,246,0.06) 100%);
+    background:
+        linear-gradient(
+            135deg,
+            rgba(16, 185, 129, 0.08) 0%,
+            var(--ala-card-bg) 30%,
+            rgba(99, 102, 241, 0.08) 60%,
+            rgba(59, 130, 246, 0.06) 100%
+        );
     background-size: 300% 300%;
     border-color: var(--ala-border);
 }
 body[data-bs-theme="dark"] .ala-complete-title,
-body.dark .ala-complete-title { color: var(--ala-text); }
+body.dark .ala-complete-title {
+    color: var(--ala-text);
+}
 body[data-bs-theme="dark"] .ala-complete-message,
-body.dark .ala-complete-message { color: var(--ala-text-secondary); }
+body.dark .ala-complete-message {
+    color: var(--ala-text-secondary);
+}
 body[data-bs-theme="dark"] .ala-activity::before,
 body.dark .ala-activity::before {
-    border-color: color-mix(in srgb, var(--act) 25%, transparent);
+    border-color: color-mix(in srgb, var(--ala-act) 25%, transparent);
 }
 body[data-bs-theme="dark"] .ala-tfs-explanation-card,
 body.dark .ala-tfs-explanation-card {
@@ -2635,12 +3009,12 @@ body.dark .ala-tfs-mid-result {
 }
 body[data-bs-theme="dark"] .ala-tfs-mid-result-correct,
 body.dark .ala-tfs-mid-result-correct {
-    background: rgba(16,185,129,0.1);
+    background: rgba(16, 185, 129, 0.1);
     color: #6ee7b7;
 }
 body[data-bs-theme="dark"] .ala-tfs-mid-result-incorrect,
 body.dark .ala-tfs-mid-result-incorrect {
-    background: rgba(239,68,68,0.1);
+    background: rgba(239, 68, 68, 0.1);
     color: #fca5a5;
 }
 body[data-bs-theme="dark"] .ala-fib-passage,
@@ -2649,27 +3023,27 @@ body.dark .ala-fib-passage {
 }
 body[data-bs-theme="dark"] .ala-fc-progress,
 body.dark .ala-fc-progress {
-    background: rgba(255,255,255,0.04);
+    background: rgba(255, 255, 255, 0.04);
     border-color: var(--ala-border);
 }
 body[data-bs-theme="dark"] .ala-fc-btn,
 body.dark .ala-fc-btn {
-    background: rgba(255,255,255,0.06);
+    background: rgba(255, 255, 255, 0.06);
     color: var(--ala-text);
 }
 body[data-bs-theme="dark"] .ala-fc-btn:hover,
 body.dark .ala-fc-btn:hover {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
 }
 body[data-bs-theme="dark"] .ala-bucket-clickable:hover,
 body.dark .ala-bucket-clickable:hover {
-    background: rgba(255,255,255,0.04);
-    color: var(--ala-text) !important;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--ala-text);
 }
 body[data-bs-theme="dark"] .ala-column-clickable:hover,
 body.dark .ala-column-clickable:hover {
-    background: rgba(255,255,255,0.03);
-    color: var(--ala-text) !important;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--ala-text);
 }
 body[data-bs-theme="dark"] .ala-manage-actions .ala-btn,
 body.dark .ala-manage-actions .ala-btn {
@@ -2686,11 +3060,17 @@ body.dark select.ala-form-input {
     color: var(--ala-text);
 }
 body[data-bs-theme="dark"] .ala-form-label,
-body.dark .ala-form-label { color: var(--ala-text); }
+body.dark .ala-form-label {
+    color: var(--ala-text);
+}
 body[data-bs-theme="dark"] .ala-form-help,
-body.dark .ala-form-help { color: var(--ala-text-muted); }
+body.dark .ala-form-help {
+    color: var(--ala-text-muted);
+}
 body[data-bs-theme="dark"] .ala-section-title,
-body.dark .ala-section-title { color: var(--ala-text); }
+body.dark .ala-section-title {
+    color: var(--ala-text);
+}
 body[data-bs-theme="dark"] button.ala-level-pill,
 body[data-bs-theme="dark"] .ala-level-pill,
 body.dark button.ala-level-pill,
@@ -2706,13 +3086,13 @@ body.dark button.ala-level-pill:hover,
 body.dark .ala-level-pill:hover {
     border-color: #818cf8 !important;
     color: #a5b4fc !important;
-    background: rgba(99,102,241,0.1) !important;
-    background-color: rgba(99,102,241,0.1) !important;
+    background: rgba(99, 102, 241, 0.1) !important;
+    background-color: rgba(99, 102, 241, 0.1) !important;
 }
 body[data-bs-theme="dark"] .ala-role-chip,
 body.dark .ala-role-chip {
-    background: rgba(99,102,241,0.15) !important;
-    background-color: rgba(99,102,241,0.15) !important;
+    background: rgba(99, 102, 241, 0.15) !important;
+    background-color: rgba(99, 102, 241, 0.15) !important;
     color: #a5b4fc !important;
 }
 
@@ -2723,8 +3103,8 @@ body.dark .ala-role-chip {
     gap: 16px !important;
     padding: 16px 20px !important;
     border-radius: 12px;
-    background: linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(139,92,246,0.06) 100%);
-    border: 1px solid rgba(99,102,241,0.12);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(139, 92, 246, 0.06) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.12);
     margin-bottom: 20px;
     animation: ala-fade-in 0.4s ease;
 }
@@ -2738,7 +3118,7 @@ body.dark .ala-role-chip {
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: #fff;
     flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(99,102,241,0.25);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
 }
 .ala-eta-icon-wrap svg {
     width: 24px;
@@ -2773,10 +3153,213 @@ body.dark .ala-role-chip {
 }
 body[data-bs-theme="dark"] .ala-eta-banner,
 body.dark .ala-eta-banner {
-    background: linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.1) 100%);
-    border-color: rgba(99,102,241,0.2);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border-color: rgba(99, 102, 241, 0.2);
 }
 body[data-bs-theme="dark"] .ala-eta-time,
 body.dark .ala-eta-time {
     color: #e5e7eb;
+}
+
+/* ==================== SCOPED TEXT COLOUR (replaces !important) ==================== */
+/* These declarations previously used !important purely to beat the Moodle theme's
+   element-level link/button colour rules (a, a:hover, .mod-content a — specificity
+   0,0,1 to 0,1,1). Scoping them under .ala-container raises them to 0,2,0/0,3,0,
+   which wins without !important. The layout overrides elsewhere in this file keep
+   their !important because they fight Bootstrap rules of equal or higher weight. */
+.ala-container .ala-tap-btn {
+    color: var(--ala-text);
+}
+.ala-container .ala-tap-btn-a {
+    color: #065f46;
+}
+.ala-container .ala-tap-btn-b {
+    color: #991b1b;
+}
+.ala-container .ala-card-option:hover,
+.ala-container .ala-column-clickable:hover,
+.ala-container .ala-bucket-clickable:hover,
+.ala-container .ala-match-item:hover:not(.ala-matched),
+.ala-container .ala-order-item:hover,
+.ala-container .ala-fib-word:hover,
+.ala-container .ala-tap-btn:hover {
+    color: var(--ala-text);
+}
+.ala-container .ala-tap-btn-a:hover {
+    color: #065f46;
+}
+.ala-container .ala-tap-btn-b:hover {
+    color: #991b1b;
+}
+.ala-container .ala-tfs-btn-false:hover {
+    color: #b91c1c;
+}
+.ala-container .ala-tfs-btn-true:hover {
+    color: #15803d;
+}
+
+/* ==================== FOCUS VISIBILITY ==================== */
+/* Every interactive element — including the elements the JS upgrades with
+   role="button" tabindex="0" (card options, sort columns, category buckets,
+   matching items, ordering items, flashcards, fill-in-blank blanks) — gets the
+   same clearly visible ring. `outline: 2px solid transparent` is kept so the
+   indicator survives Windows High Contrast / forced-colors mode, where
+   box-shadow is discarded. */
+.ala-container .ala-card-option:focus-visible,
+.ala-container .ala-column:focus-visible,
+.ala-container .ala-column-clickable:focus-visible,
+.ala-container .ala-category-bucket:focus-visible,
+.ala-container .ala-bucket-clickable:focus-visible,
+.ala-container .ala-match-item:focus-visible,
+.ala-container .ala-order-item:focus-visible,
+.ala-container .ala-flashcard:focus-visible,
+.ala-container .ala-fib-blank:focus-visible,
+.ala-container .ala-fib-word:focus-visible,
+.ala-container .ala-current-item:focus-visible,
+.ala-container .ala-preview-clickable:focus-visible,
+.ala-container .ala-preview-edit:focus-visible,
+.ala-container .ala-btn:focus-visible,
+.ala-container .ala-tap-btn:focus-visible,
+.ala-container .ala-tfs-btn-true:focus-visible,
+.ala-container .ala-tfs-btn-false:focus-visible,
+.ala-container .ala-fc-btn:focus-visible,
+.ala-container .ala-review-nav-btn:focus-visible,
+.ala-container .ala-level-pill:focus-visible,
+.ala-container .ala-role-chip:focus-visible,
+.ala-container .ala-chip-remove:focus-visible,
+.ala-container .ala-toggle-checkbox:focus-visible + .ala-toggle-switch {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow:
+        0 0 0 3px var(--ala-card-bg),
+        0 0 0 6px var(--ala-act, var(--ala-primary));
+    border-radius: var(--ala-radius-sm);
+    position: relative;
+    z-index: 2;
+}
+/* The three form controls that set `outline: none` on :focus already draw a ring,
+   but it is repeated here at full strength for :focus-visible and paired with a
+   transparent outline for forced-colors mode. */
+.ala-container .ala-textarea:focus-visible,
+.ala-container .ala-select:focus-visible,
+.ala-container .ala-input:focus-visible,
+.ala-container .ala-edit-input:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    border-color: var(--ala-primary);
+    box-shadow: 0 0 0 3px var(--ala-primary-glow);
+}
+
+/* ==================== RTL SUPPORT ==================== */
+/* Only rules whose direction carries meaning are mirrored. The matching columns,
+   the column-sort/category-sort layouts and the cards grid all use CSS grid or
+   flex, which already flow right-to-left, so they need no override. There is no
+   directional `float` or `text-align: left` in this file. */
+[dir="rtl"] .ala-review-fc-back {
+    padding-left: 0;
+    padding-right: 20px;
+}
+[dir="rtl"] .ala-review-tfs-explanation {
+    padding-left: 0;
+    padding-right: 34px;
+}
+[dir="rtl"] .ala-review-done-btn {
+    margin-left: 0;
+    margin-right: 4px;
+}
+[dir="rtl"] .ala-flashcard-number {
+    left: auto;
+    right: 16px;
+}
+[dir="rtl"] .ala-toggle-switch::after {
+    left: auto;
+    right: 2px;
+}
+[dir="rtl"] .ala-toggle-checkbox:checked + .ala-toggle-switch::after {
+    transform: translateX(-20px);
+}
+[dir="rtl"] .ala-matching-col-label {
+    padding-left: 2px;
+    padding-right: 0;
+}
+[dir="rtl"] .ala-animate-slide-in {
+    animation-name: ala-slide-in-right-rtl;
+}
+
+@keyframes ala-slide-in-right-rtl {
+    0% {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ==================== REDUCED MOTION ==================== */
+/* Scoped to the plugin's own roots — never a global `*`. Covers the four infinite
+   animations (ala-progress-shimmer, ala-item-float, ala-blank-pulse,
+   ala-complete-bg/-glow/-pulse), the flashcard 3D flip and every slide/pop
+   transition. The named selectors below repeat the container rule so the
+   !important also beats the `.ala-shake { animation: ... !important }` rule. */
+@media (prefers-reduced-motion: reduce) {
+    .ala-container,
+    .ala-container *,
+    .ala-container *::before,
+    .ala-container *::after {
+        animation-duration: 0s !important;
+        animation-iteration-count: 1 !important;
+        animation-delay: 0ms !important;
+        transition-duration: 0s !important;
+        transition-delay: 0ms !important;
+        scroll-behavior: auto !important;
+    }
+    .ala-container .ala-player-progress-fill,
+    .ala-container .ala-current-item,
+    .ala-container .ala-fib-empty.ala-selected,
+    .ala-container .ala-complete-screen,
+    .ala-container .ala-complete-screen::before,
+    .ala-container .ala-complete-content,
+    .ala-container .ala-complete-icon,
+    .ala-container .ala-flashcard-hint,
+    .ala-container .ala-shake,
+    .ala-container .ala-animate-slide-in,
+    .ala-container .ala-player-feedback:not(.ala-feedback-hidden),
+    .ala-container .ala-tfs-mid-result,
+    .ala-container .ala-tfs-result-icon,
+    .ala-container .ala-tfs-result-status,
+    .ala-container .ala-eta-banner {
+        animation: none !important;
+        transition: none !important;
+    }
+    /* Card flip: swap the 3D rotation for an instant face swap. */
+    .ala-container .ala-flashcard,
+    .ala-container .ala-flashcard.ala-flipped {
+        transition: none !important;
+        transform: none !important;
+    }
+    .ala-container .ala-flashcard-back {
+        transform: none !important;
+    }
+    .ala-container .ala-flashcard.ala-flipped .ala-flashcard-front {
+        visibility: hidden;
+    }
+    .ala-container .ala-flashcard:not(.ala-flipped) .ala-flashcard-back {
+        visibility: hidden;
+    }
+    /* Hover lift / press-scale transforms are motion too. */
+    .ala-container .ala-card-option:hover,
+    .ala-container .ala-match-item:hover:not(.ala-matched),
+    .ala-container .ala-order-item:hover,
+    .ala-container .ala-fib-word:hover,
+    .ala-container .ala-tfs-btn-true:hover,
+    .ala-container .ala-tfs-btn-false:hover,
+    .ala-container .ala-btn:active,
+    .ala-container .ala-tap-btn:active {
+        transform: none !important;
+    }
+    .ala-confetti-canvas {
+        display: none !important;
+    }
 }

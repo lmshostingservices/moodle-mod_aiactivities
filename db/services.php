@@ -15,11 +15,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_aiactivities file.
+ * External function declarations for mod_aiactivities.
  *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
@@ -31,6 +31,7 @@ $functions = [
         'description' => 'Save student progress for AI Learning Activities',
         'type' => 'write',
         'ajax' => true,
+        'capabilities' => 'mod/aiactivities:view',
         'loginrequired' => true,
     ],
 ];

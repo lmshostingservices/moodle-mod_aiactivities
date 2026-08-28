@@ -15,31 +15,54 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_aiactivities file.
+ * Restore task for mod_aiactivities.
  *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/mod/aiactivities/backup/moodle2/restore_aiactivities_stepslib.php');
 
+/**
+ * Restore task for mod_aiactivities
+ */
 class restore_aiactivities_activity_task extends restore_activity_task {
+    /**
+     * Defines the settings this task adds.
+     *
+     * @return void
+     */
     protected function define_my_settings() {
     }
 
+    /**
+     * Defines the steps this task runs.
+     *
+     * @return void
+     */
     protected function define_my_steps() {
         $this->add_step(new restore_aiactivities_activity_structure_step('aiactivities_structure', 'aiactivities.xml'));
     }
 
+    /**
+     * Defines the fields that are decoded on restore.
+     *
+     * @return array The decode contents.
+     */
     public static function define_decode_contents() {
         $contents = [];
         $contents[] = new restore_decode_content('aiactivities', ['intro'], 'aiactivities');
         return $contents;
     }
 
+    /**
+     * Defines the link decoding rules.
+     *
+     * @return array The decode rules.
+     */
     public static function define_decode_rules() {
         $rules = [];
         $rules[] = new restore_decode_rule('AIACTIVITIESVIEWBYID', '/mod/aiactivities/view.php?id=$1', 'course_module');
@@ -47,6 +70,11 @@ class restore_aiactivities_activity_task extends restore_activity_task {
         return $rules;
     }
 
+    /**
+     * Defines the log restore rules for the activity.
+     *
+     * @return array The log rules.
+     */
     public static function define_restore_log_rules() {
         $rules = [];
         $rules[] = new restore_log_rule('aiactivities', 'add', 'view.php?id={course_module}', '{aiactivities}');
@@ -55,6 +83,11 @@ class restore_aiactivities_activity_task extends restore_activity_task {
         return $rules;
     }
 
+    /**
+     * Defines the log restore rules for the course.
+     *
+     * @return array The log rules.
+     */
     public static function define_restore_log_rules_for_course() {
         $rules = [];
         $rules[] = new restore_log_rule('aiactivities', 'view all', 'index.php?id={course}', null);

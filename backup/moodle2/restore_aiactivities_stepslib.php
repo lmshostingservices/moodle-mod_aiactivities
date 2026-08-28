@@ -15,16 +15,22 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * mod_aiactivities file.
+ * Restore steps for mod_aiactivities.
  *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
+/**
+ * Defines the structure restored for one aiactivities instance.
+ */
 class restore_aiactivities_activity_structure_step extends restore_activity_structure_step {
+    /**
+     * Defines the paths that are restored.
+     *
+     * @return restore_path_element[] The prepared activity structure.
+     */
     protected function define_structure() {
         $paths = [];
         $userinfo = $this->get_setting_value('userinfo');
@@ -38,11 +44,16 @@ class restore_aiactivities_activity_structure_step extends restore_activity_stru
         return $this->prepare_activity_structure($paths);
     }
 
+    /**
+     * Restores one aiactivities instance.
+     *
+     * @param array $data The instance data from the backup file.
+     * @return void
+     */
     protected function process_aiactivities($data) {
         global $DB;
 
         $data = (object)$data;
-        $oldid = $data->id;
         $data->course = $this->get_courseid();
         $data->timecreated = $this->apply_date_offset($data->timecreated);
         $data->timemodified = $this->apply_date_offset($data->timemodified);
@@ -56,11 +67,26 @@ class restore_aiactivities_activity_structure_step extends restore_activity_stru
         if (!isset($data->completionallcorrect)) {
             $data->completionallcorrect = 1;
         }
+        if (!isset($data->voiceoverenabled)) {
+            $data->voiceoverenabled = 0;
+        }
+        if (!isset($data->voicegender)) {
+            $data->voicegender = 'female';
+        }
+        if (!isset($data->voiceid)) {
+            $data->voiceid = 'Zephyr';
+        }
 
         $newitemid = $DB->insert_record('aiactivities', $data);
         $this->apply_activity_instance($newitemid);
     }
 
+    /**
+     * Restores one attempt.
+     *
+     * @param array $data The attempt data from the backup file.
+     * @return void
+     */
     protected function process_aiactivities_attempt($data) {
         global $DB;
 
@@ -80,6 +106,11 @@ class restore_aiactivities_activity_structure_step extends restore_activity_stru
         $this->set_mapping('aiactivities_attempt', $oldid, $newitemid);
     }
 
+    /**
+     * Adds the files belonging to the restored instance.
+     *
+     * @return void
+     */
     protected function after_execute() {
         $this->add_related_files('mod_aiactivities', 'intro', null);
     }
