@@ -2,6 +2,42 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.8.0] - 2026-09-09
+
+### Added
+- **Many more industries and sectors for scenario mode.** The vocabulary grew from 29 industries
+  and 292 sectors to 52 industries and 704 sectors.
+- 23 new industries: Arts & Culture, Beauty & Personal Care, Cleaning & Facility Services,
+  Defence, Emergency Services, Energy & Renewables, Environment & Sustainability,
+  Events & Entertainment, Fishing & Forestry, Funeral Services, Horticulture & Landscaping,
+  Insurance, Legal, Marine & Maritime, Media & Communications, Pharmacy & Life Sciences,
+  Property & Real Estate, Rail, Research & Science, Telecommunications,
+  "Textiles, Clothing & Footwear", Veterinary & Animal Care, and Wholesale & Distribution.
+- 196 further sectors across the 28 existing industries that gained entries. Community Services
+  in particular gains Employment Services, Disability Employment Services, Support Coordination
+  (NDIS), Child Protection, Foster & Out-of-Home Care, Financial Counselling, Crisis Support &
+  Helplines, Social Housing Support, Settlement Services, Community Development, Advocacy
+  Services, Volunteer Coordination, Correctional & Justice Support and Community Legal Support.
+
+### Changed
+- The vocabulary is now cached for the duration of a request rather than resolving every language
+  string each time it is read.
+- The TAFE sector is shown as "Public vocational institutes (TAFE)", which no longer reads as a
+  duplicate of "Vocational Education (VET)" in the same list. The value sent to the generation
+  service is unchanged.
+- The API URL setting description named a different product; it now describes this plugin's
+  service.
+
+### Removed
+- Seven language strings nothing referenced, and the unminified copy of the player in `amd/build/`,
+  which Moodle never loads (it serves `amd/src` in developer mode and `amd/build/player.min.js`
+  otherwise).
+
+### Notes
+- Every existing industry and sector keeps its name, its position in the list and its language
+  string key, so activities generated before this release are unaffected and any saved scenario
+  selection still resolves.
+
 ## [1.7.1] - 2026-08-28
 
 Housekeeping only — no change to how the plugin behaves for teachers or students.

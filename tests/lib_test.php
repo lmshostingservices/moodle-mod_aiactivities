@@ -104,16 +104,71 @@ final class lib_test extends \advanced_testcase {
 
         $taxonomy = \mod_aiactivities\local\taxonomy::get_localised();
 
-        $this->assertCount(29, $taxonomy);
+        $this->assertCount(52, $taxonomy);
+
+        $values = [];
         foreach ($taxonomy as $industry) {
             $this->assertArrayHasKey('value', $industry);
-            $this->assertArrayHasKey('label', $industry);
+            $this->assertNotSame('', $industry['value']);
             $this->assertNotEmpty($industry['sectors']);
+            $values[] = $industry['value'];
+
+            $sectorvalues = [];
             foreach ($industry['sectors'] as $sector) {
                 $this->assertArrayHasKey('value', $sector);
-                $this->assertArrayHasKey('label', $sector);
+                $this->assertNotSame('', $sector['value']);
+                $sectorvalues[] = $sector['value'];
+            }
+
+            // Sector values must be unique inside an industry, or the sector
+            // select would offer the same option twice.
+            $this->assertSame(array_unique($sectorvalues), $sectorvalues);
+        }
+
+        $this->assertSame(array_unique($values), $values);
+    }
+
+    /**
+     * A label is only sent when it differs from the canonical value.
+     *
+     * @return void
+     */
+    public function test_taxonomy_labels_only_when_translated(): void {
+        $this->resetAfterTest();
+
+        $taxonomy = \mod_aiactivities\local\taxonomy::get_localised();
+
+        $sectors = [];
+        foreach ($taxonomy as $industry) {
+            $this->assertArrayNotHasKey('label', $industry);
+            foreach ($industry['sectors'] as $sector) {
+                $sectors[$sector['value']] = $sector;
             }
         }
+
+        // These two are displayed under a friendlier name, but the generation
+        // service must still receive the original value.
+        $this->assertSame('Public vocational institutes (TAFE)', $sectors['TAFE']['label']);
+        $this->assertSame('Camera monitoring', $sectors['CCTV & Monitoring']['label']);
+    }
+
+    /**
+     * Employment services are offered under community services.
+     *
+     * @return void
+     */
+    public function test_taxonomy_includes_employment_services(): void {
+        $this->resetAfterTest();
+
+        $sectors = [];
+        foreach (\mod_aiactivities\local\taxonomy::get_localised() as $industry) {
+            if ($industry['value'] === 'Community Services') {
+                $sectors = array_column($industry['sectors'], 'value');
+            }
+        }
+
+        $this->assertContains('Employment Services', $sectors);
+        $this->assertContains('Disability Employment Services', $sectors);
     }
 
     /**
