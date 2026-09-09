@@ -111,6 +111,15 @@ $config = [
     'voicelanguage' => $instance->language ?? 'en-AU',
 ];
 
-$PAGE->requires->js_call_amd('mod_aiactivities/player', 'init', [$config]);
+// The configuration carries the language strings, the scenario vocabulary and the
+// activity manifest, which is far more than js_call_amd() is meant to inline. It is
+// written into a non-executable JSON data island instead and read by the module.
+echo html_writer::tag(
+    'script',
+    json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
+    ['type' => 'application/json', 'id' => 'ala-player-config']
+);
+
+$PAGE->requires->js_call_amd('mod_aiactivities/player', 'init');
 
 echo $OUTPUT->footer();

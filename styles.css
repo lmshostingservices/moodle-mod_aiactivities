@@ -86,6 +86,184 @@
     --ala-act-glow: rgba(249, 115, 22, 0.3);
 }
 
+/* ==================== STREAK CELEBRATION ==================== */
+/* Shown over the player when a run of first-time-correct answers reaches a
+   milestone. Dismisses itself, and on click or Escape. */
+.ala-player-container {
+    position: relative;
+}
+
+.ala-streak-pop {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.45);
+    border-radius: var(--ala-radius-lg);
+    pointer-events: none;
+    animation: ala-streak-fade 200ms ease-out;
+}
+
+.ala-streak-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    max-width: 320px;
+    padding: 26px 30px;
+    text-align: center;
+    background: var(--ala-card-bg);
+    border: 1px solid var(--ala-border);
+    border-radius: var(--ala-radius-lg);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+    cursor: pointer;
+    pointer-events: auto;
+    animation: ala-streak-pop-in 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ala-streak-badge {
+    animation: ala-streak-badge-pulse 900ms ease-in-out 320ms 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 58px;
+    margin-bottom: 4px;
+    font-size: 24px;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(135deg, var(--ala-primary), var(--ala-act, var(--ala-primary)));
+    border-radius: 50%;
+}
+
+.ala-streak-title {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--ala-text);
+}
+
+.ala-streak-msg {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ala-text-muted);
+}
+
+@keyframes ala-streak-badge-pulse {
+    0% {
+        box-shadow: 0 0 0 0 var(--ala-act-glow, rgba(99, 102, 241, 0.45));
+    }
+
+    70% {
+        box-shadow: 0 0 0 14px rgba(99, 102, 241, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    }
+}
+
+@keyframes ala-streak-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes ala-streak-pop-in {
+    from {
+        transform: scale(0.85);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ==================== STREAK CHIP ==================== */
+/* Running count of first-time-correct answers, shown from two upwards. */
+.ala-streak-chip {
+    display: none;
+}
+
+.ala-streak-chip.ala-streak-chip-on {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+    margin-top: 10px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ala-primary);
+    background: var(--ala-card-bg);
+    border: 1px solid var(--ala-border);
+    border-radius: 20px;
+}
+
+.ala-streak-chip-count {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+.ala-streak-chip-label {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    opacity: 0.8;
+}
+
+.ala-streak-bump {
+    animation: ala-streak-bump 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes ala-streak-bump {
+    0% {
+        transform: scale(1);
+    }
+
+    45% {
+        transform: scale(1.18);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* ==================== NEXT ACTIVITY CONTROL ==================== */
+/* The player waits for the student rather than advancing on a timer, so the
+   control below appears once an activity is answered. */
+.ala-player-next {
+    display: none;
+    justify-content: center;
+    margin: 18px 0 4px;
+}
+
+.ala-player-next.ala-next-visible {
+    display: flex;
+}
+
+.ala-next-btn {
+    min-width: 190px;
+    justify-content: center;
+    gap: 8px;
+}
+
+@media (max-width: 500px) {
+    .ala-next-btn {
+        width: 100%;
+    }
+}
+
 /* ==================== NARRATION CONTROLS ==================== */
 /* Icon-only play / mute / stop group, pinned to the top right of the activity
    card. Each control carries a title and an aria-label so the meaning is
@@ -3323,6 +3501,10 @@ body.dark .ala-eta-time {
     .ala-container .ala-complete-content,
     .ala-container .ala-complete-icon,
     .ala-container .ala-flashcard-hint,
+    .ala-container .ala-streak-bump,
+    .ala-container .ala-streak-pop,
+    .ala-container .ala-streak-card,
+    .ala-container .ala-streak-badge,
     .ala-container .ala-shake,
     .ala-container .ala-animate-slide-in,
     .ala-container .ala-player-feedback:not(.ala-feedback-hidden),

@@ -2,6 +2,47 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.9.1] - 2026-09-09
+
+### Fixed
+- **The player would not start on a site with developer debugging turned on.** The page data
+  (language strings, scenario vocabulary and the activity manifest) was passed as an argument to
+  `js_call_amd()`, which Moodle limits to 1024 characters and warns about beyond that. The data is
+  now written into the page as a JSON block and read by the module, so the player starts cleanly
+  whatever the debugging level.
+
+### Changed
+- The bundled JavaScript in `amd/build` is now produced by Moodle's own Grunt build, so the module
+  carries its name in the AMD `define()` call as core expects when it serves every module in a
+  single request.
+
+## [1.9.0] - 2026-09-09
+
+### Added
+- **A Next button between activities.** The player no longer moves on by itself after a correct
+  answer. Feedback stays on screen and a "Next activity" button appears (labelled "Finish" on the
+  last one), so students set their own pace. The button takes keyboard focus when it appears.
+- **Streak rewards.** Activities answered correctly first go are counted as a streak. A chip in the
+  player header shows the running count from two upwards and bumps each time it grows, and a
+  celebration popup appears at 4, 8, 12 and 16 in a row. The popup carries its own rising chime
+  and confetti, dismisses itself after 2.6 seconds, and also closes on click or Escape.
+- A wrong answer anywhere in an activity ends the streak and stops that activity counting towards
+  it, so the streak only ever reflects first-time-correct answers. Flashcards, which have no answer
+  that can be wrong, are neutral: they neither extend nor break a streak.
+- A completed activity is now locked until the student moves on, so it cannot be answered a second
+  time and cannot lose a streak that was already earned.
+- Completion confetti is now withheld whenever the student got anything wrong, in any activity
+  type. Previously only the true or false activity recorded that.
+
+### Changed
+- Moving to the next activity is now immediate once the student clicks, rather than after the
+  800ms pause the automatic advance used.
+- Feedback stays on screen until the student moves on, instead of fading after 1.5 seconds.
+
+### Notes
+- A streak lives in the browser for the duration of the attempt. Reloading the page mid-attempt
+  resets it to zero; the activities already completed are still recorded as normal.
+
 ## [1.8.0] - 2026-09-09
 
 ### Added

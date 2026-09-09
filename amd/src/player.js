@@ -19,6 +19,11 @@ define(['core/notification'], function(Notification) {
     var attemptId = null;
     var progress = {};
     var hadWrongAnswers = false;
+    var streak = 0; // Activities answered correctly first go, in a row.
+    var activityclean = true; // No wrong answer yet in the current activity.
+    var activitydone = false; // The current activity has already been completed.
+    var activityscored = true; // The current activity has answers that can be wrong.
+    var streakTimer = null;
     var advancing = false; // V1.5.54 FIX-DOUBLE-CLICK-SKIP: guard against advanceToNext() firing twice
     // v1.6.8 FIX-AUDIO-BLEED: reference to the playing voiceover BufferSourceNode
     // so it can be stopped before the next activity starts.
@@ -430,10 +435,16 @@ define(['core/notification'], function(Notification) {
     /**
      * Play a short synthesised UI sound.
      *
-     * @param {String} type One of correct, wrong, complete, lock, flip, cardDone, swoosh.
+     * @param {String} type One of correct, wrong, streak, complete, lock, flip, cardDone, swoosh.
      * @return {void}
      */
     function playSound(type) {
+        // Bookkeeping first: a wrong answer must end the streak even when the
+        // audio context is unavailable and everything below throws.
+        if (type === 'wrong') {
+            registerWrongAnswer();
+        }
+
         try {
             var ctx = getAudioCtx();
             var osc = ctx.createOscillator();
@@ -458,6 +469,24 @@ define(['core/notification'], function(Notification) {
                 gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
                 osc.start(ctx.currentTime);
                 osc.stop(ctx.currentTime + 0.3);
+            } else if (type === 'streak') {
+                // A brighter, faster run than 'correct', for a streak milestone.
+                [659.25, 830.61, 987.77, 1318.51].forEach(function(freq, i) {
+                    var so = ctx.createOscillator();
+                    var sg = ctx.createGain();
+                    so.connect(sg);
+                    sg.connect(ctx.destination);
+                    so.type = 'triangle';
+                    so.frequency.value = freq;
+                    sg.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.08);
+                    sg.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + i * 0.08 + 0.02);
+                    sg.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.08 + 0.3);
+                    so.start(ctx.currentTime + i * 0.08);
+                    so.stop(ctx.currentTime + i * 0.08 + 0.32);
+                });
+                osc.disconnect();
+                gain.disconnect();
+                return;
             } else if (type === 'complete') {
                 var notes = [523.25, 659.25, 783.99, 1046.50];
                 notes.forEach(function(freq, i) {
@@ -804,6 +833,12 @@ define(['core/notification'], function(Notification) {
      * @return {void}
      */
     function showFeedback(correct, message, isHtml) {
+        if (!correct) {
+            // Registered here rather than in playSound(): the sound is not reached
+            // when the feedback element is missing, and the streak must not depend on it.
+            registerWrongAnswer();
+        }
+
         var feedbackId = isPreviewMode ? 'ala-preview-feedback' : 'ala-player-feedback';
         var feedbackEl = document.getElementById(feedbackId);
         if (!feedbackEl) {
@@ -878,7 +913,319 @@ define(['core/notification'], function(Notification) {
         });
     }
 
+    // ========== STREAK ==========
+
+    /** @type {Number[]} Streak lengths that are celebrated. */
+    var STREAK_MILESTONES = [4, 8, 12, 16];
+
+    /** @type {String[]} Activity types with no answer that can be got wrong. */
+    var UNSCORED_TYPES = ['flashcards'];
+
+    /**
+     * Record that the student got something wrong, which ends the current streak.
+     *
+     * @return {void}
+     */
+    function registerWrongAnswer() {
+        if (isPreviewMode || isReviewMode || activitydone) {
+            // Once an activity has been completed, later fiddling with it cannot
+            // cost the student a streak they have already earned.
+            return;
+        }
+        activityclean = false;
+        hadWrongAnswers = true;
+        streak = 0;
+        updateStreakChip(false);
+    }
+
+    /**
+     * Count a finished activity towards the streak and celebrate a milestone.
+     *
+     * @return {Boolean} True when a milestone popup was shown.
+     */
+    function registerActivityFinished() {
+        if (isPreviewMode || isReviewMode) {
+            return false;
+        }
+        if (!activityclean || !activityscored) {
+            // Flashcards and anything else without a wrong answer are neutral:
+            // they neither extend nor break the streak.
+            return false;
+        }
+
+        streak++;
+        updateStreakChip(true);
+
+        if (STREAK_MILESTONES.indexOf(streak) === -1) {
+            return false;
+        }
+
+        showStreakPopup(streak);
+        return true;
+    }
+
+    /**
+     * Show the running streak in the player header, from two in a row upwards.
+     *
+     * @param {Boolean} bump Whether to animate the chip because the streak just grew.
+     * @return {void}
+     */
+    function updateStreakChip(bump) {
+        var chip = document.getElementById('ala-streak-chip');
+        if (!chip) {
+            return;
+        }
+
+        if (streak < 2 || isPreviewMode || isReviewMode) {
+            chip.className = 'ala-streak-chip';
+            chip.innerHTML = '';
+            return;
+        }
+
+        chip.className = 'ala-streak-chip ala-streak-chip-on';
+        chip.innerHTML = '<span class="ala-streak-flame" aria-hidden="true">&#128293;</span>' +
+            '<span class="ala-streak-chip-count">' + streak + '</span>' +
+            '<span class="ala-streak-chip-label">' +
+            escapeHtml(str('js_streak_chip_label', 'in a row')) + '</span>';
+
+        if (bump && !prefersReducedMotion()) {
+            chip.classList.remove('ala-streak-bump');
+            void chip.offsetWidth;
+            chip.classList.add('ala-streak-bump');
+        }
+    }
+
+    /**
+     * Celebrate a streak milestone with a short, self-dismissing popup.
+     *
+     * @param {Number} count The number of activities answered correctly in a row.
+     * @return {void}
+     */
+    function showStreakPopup(count) {
+        var player = document.getElementById('ala-player');
+        if (!player) {
+            return;
+        }
+
+        dismissStreakPopup();
+
+        var pop = document.createElement('div');
+        pop.id = 'ala-streak-pop';
+        pop.className = 'ala-streak-pop';
+        pop.setAttribute('role', 'status');
+        pop.setAttribute('aria-live', 'polite');
+
+        var card = document.createElement('div');
+        card.className = 'ala-streak-card';
+
+        var badge = document.createElement('div');
+        badge.className = 'ala-streak-badge';
+        badge.textContent = String(count);
+        badge.setAttribute('aria-hidden', 'true');
+
+        var title = document.createElement('p');
+        title.className = 'ala-streak-title';
+        title.textContent = str('js_streak_' + count + '_title', 'On a streak!');
+
+        var msg = document.createElement('p');
+        msg.className = 'ala-streak-msg';
+        msg.textContent = str('js_streak_' + count + '_msg', 'Great job, keep it up!');
+
+        card.appendChild(badge);
+        card.addEventListener('click', dismissStreakPopup);
+        player.appendChild(pop);
+
+        // The live region has to be in the document before its content changes,
+        // or screen readers do not announce it.
+        setTimeout(function() {
+            pop.appendChild(card);
+            card.appendChild(title);
+            card.appendChild(msg);
+        }, 30);
+
+        if (!voiceoverMuted) {
+            playSound('streak');
+        }
+        fireConfetti();
+
+        streakTimer = setTimeout(dismissStreakPopup, 2600);
+        document.addEventListener('keydown', streakKeyHandler);
+    }
+
+    /**
+     * Dismiss the streak popup on Escape.
+     *
+     * @param {KeyboardEvent} e The key event.
+     * @return {void}
+     */
+    function streakKeyHandler(e) {
+        if (e.key === 'Escape' || e.key === 'Esc') {
+            dismissStreakPopup();
+        }
+    }
+
+    /**
+     * Remove the streak popup and move focus to the next control.
+     *
+     * @return {void}
+     */
+    function dismissStreakPopup() {
+        if (streakTimer !== null) {
+            clearTimeout(streakTimer);
+            streakTimer = null;
+        }
+        document.removeEventListener('keydown', streakKeyHandler);
+
+        var pop = document.getElementById('ala-streak-pop');
+        if (pop && pop.parentNode) {
+            pop.parentNode.removeChild(pop);
+        }
+
+        var btn = document.getElementById('ala-next-btn');
+        var active = document.activeElement;
+        var infocus = !active || active === document.body || (pop && pop.contains(active));
+        if (btn && !btn.disabled && infocus) {
+            btn.focus();
+        }
+    }
+
+    /**
+     * Clear the per-activity streak state before an activity is rendered.
+     *
+     * @param {Object} activity The activity about to be rendered.
+     * @return {void}
+     */
+    function resetActivityState(activity) {
+        dismissStreakPopup();
+        activityclean = true;
+        activitydone = false;
+        activityscored = !!activity && UNSCORED_TYPES.indexOf(activity.type) === -1;
+    }
+
+    /**
+     * Disable the controls of an activity that has just been completed, so it
+     * cannot be answered a second time while the student decides to move on.
+     *
+     * @return {void}
+     */
+    function lockFinishedActivity() {
+        ['ala-check-order', 'ala-fib-check', 'ala-flashcard-next', 'ala-tfs-continue'].forEach(
+            function(id) {
+                var el = document.getElementById(id);
+                if (el) {
+                    el.disabled = true;
+                    el.setAttribute('aria-disabled', 'true');
+                }
+            }
+        );
+    }
+
     // ========== ADVANCE TO NEXT ==========
+
+    /**
+     * Show the control that moves on to the next activity.
+     *
+     * Replaces the automatic advance the player used to do on a timer: the
+     * feedback stays on screen until the student chooses to continue.
+     *
+     * @return {void}
+     */
+    function offerNext() {
+        if (activitydone) {
+            // The activity has already been completed; a second completion must not
+            // count towards the streak or stack up popups.
+            return;
+        }
+        activitydone = true;
+        lockFinishedActivity();
+
+        if (isPreviewMode || isReviewMode) {
+            // Preview and review have their own navigation.
+            setTimeout(advanceToNext, 800);
+            return;
+        }
+
+        registerActivityFinished();
+
+        var host = document.getElementById('ala-player-next');
+        if (!host) {
+            // No host element (an older template): fall back to advancing on a timer.
+            setTimeout(advanceToNext, 900);
+            return;
+        }
+
+        // The feedback for this activity should stay up until the student moves on.
+        if (feedbackTimer !== null) {
+            clearTimeout(feedbackTimer);
+            feedbackTimer = null;
+        }
+
+        var islast = (currentIndex >= activities.length - 1);
+        var label = islast
+            ? str('js_next_finish', 'Finish')
+            : str('js_next_activity', 'Next activity');
+
+        host.innerHTML = '';
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'ala-next-btn';
+        btn.className = 'ala-btn ala-btn-primary ala-next-btn';
+        btn.textContent = label;
+        btn.appendChild(nextArrowIcon());
+        btn.addEventListener('click', function() {
+            btn.disabled = true;
+            host.classList.remove('ala-next-visible');
+            advanceToNext();
+        });
+
+        host.appendChild(btn);
+        host.classList.add('ala-next-visible');
+
+        // Focus lands on the button whether or not a milestone popup is showing:
+        // the popup is a scrim the student can click straight through.
+        btn.focus();
+        if (typeof btn.scrollIntoView === 'function') {
+            btn.scrollIntoView({block: 'nearest'});
+        }
+    }
+
+    /**
+     * The arrow that follows the label on the next control.
+     *
+     * @return {SVGElement} The icon, hidden from assistive tech.
+     */
+    function nextArrowIcon() {
+        var ns = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(ns, 'svg');
+        svg.setAttribute('width', '16');
+        svg.setAttribute('height', '16');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        var path = document.createElementNS(ns, 'path');
+        path.setAttribute('d', 'm9 18 6-6-6-6');
+        svg.appendChild(path);
+        return svg;
+    }
+
+    /**
+     * Remove the next control, if one is on screen.
+     *
+     * @return {void}
+     */
+    function clearNext() {
+        var host = document.getElementById('ala-player-next');
+        if (host) {
+            host.innerHTML = '';
+            host.classList.remove('ala-next-visible');
+        }
+    }
+
 
     /**
      * Mark the current activity done and move on, or finish the attempt.
@@ -886,12 +1233,9 @@ define(['core/notification'], function(Notification) {
      * @return {void}
      */
     function advanceToNext() {
-        // V1.5.54 FIX-DOUBLE-CLICK-SKIP: If the student clicks Done twice in quick
-        // succession (within the 800ms renderActivity delay), the second call would
-        // increment currentIndex a second time  -  marking the as-yet-unseen next activity
-        // as complete and skipping it entirely. The advancing flag gates the function so
-        // only one advancement can be in flight at a time. It is cleared just before
-        // renderActivity() fires and also reset by practiceAgain() / review mode.
+        // The student now advances by clicking, and the button disables itself on the
+        // first click, but the guard is kept: preview mode still advances on a timer,
+        // and it costs nothing to keep a second call from skipping an activity.
         if (advancing) {
             return;
         }
@@ -921,10 +1265,8 @@ define(['core/notification'], function(Notification) {
             completeAllActivities();
         } else {
             saveProgress();
-            setTimeout(function() {
-                advancing = false;
-                renderActivity(currentIndex);
-            }, 800);
+            advancing = false;
+            renderActivity(currentIndex);
         }
     }
 
@@ -1026,6 +1368,11 @@ define(['core/notification'], function(Notification) {
             continueBtn.style.display = 'inline-flex';
         }
 
+        var completetitle = document.querySelector('.ala-complete-title');
+        if (completetitle && typeof completetitle.focus === 'function') {
+            completetitle.focus();
+        }
+
         playSound('complete');
         if (!hadWrongAnswers) {
             setTimeout(fireConfetti, 300);
@@ -1041,6 +1388,8 @@ define(['core/notification'], function(Notification) {
         if (!attemptId) {
             return;
         }
+        clearNext();
+        dismissStreakPopup();
         ajaxCall('complete', {attemptid: attemptId}, function() {
             showCompleteScreen();
         });
@@ -1054,6 +1403,12 @@ define(['core/notification'], function(Notification) {
      * @return {void}
      */
     function practiceAgain() {
+        clearNext();
+        dismissStreakPopup();
+        streak = 0;
+        activityclean = true;
+        activitydone = false;
+        updateStreakChip(false);
         currentIndex = 0;
         progress = {};
         attemptId = null;
@@ -1572,8 +1927,9 @@ define(['core/notification'], function(Notification) {
                     }
                     playSound('correct');
                     progress[currentIndex] = true;
-                    setTimeout(advanceToNext, 800);
+                    offerNext();
                 } else {
+                    registerWrongAnswer();
                     card.classList.add('ala-incorrect');
                     var correctCard = container.querySelector('[data-index="' + activity.correctIndex + '"]');
                     if (correctCard) {
@@ -1703,7 +2059,7 @@ define(['core/notification'], function(Notification) {
                     if (currentItemIdx >= totalItems) {
                         showFeedback(true, str('feedback_welldone', 'Well done!'));
                         progress[currentIndex] = true;
-                        setTimeout(advanceToNext, 900);
+                        offerNext();
                     }
                 } else {
                     var sortItem = document.getElementById('ala-sort-item');
@@ -1852,7 +2208,7 @@ define(['core/notification'], function(Notification) {
                     if (currentItemIdx >= unsorted.length) {
                         showFeedback(true, str('feedback_welldone', 'Well done!'));
                         progress[currentIndex] = true;
-                        setTimeout(advanceToNext, 900);
+                        offerNext();
                     }
                 } else {
                     var catItem = document.getElementById('ala-cat-item');
@@ -2048,7 +2404,7 @@ define(['core/notification'], function(Notification) {
                                 renderState();
                                 showFeedback(true, str('feedback_welldone', 'Well done!'));
                                 progress[currentIndex] = true;
-                                setTimeout(advanceToNext, 900);
+                                offerNext();
                             } else {
                                 renderState();
                             }
@@ -2212,7 +2568,7 @@ define(['core/notification'], function(Notification) {
                         container.querySelectorAll('.ala-order-item').forEach(function(el) {
                             el.classList.add('ala-correct');
                         });
-                        setTimeout(advanceToNext, 800);
+                        offerNext();
                     } else {
                         showFeedback(false, str('feedback_incorrect', 'Incorrect!'));
                         // Highlight wrong positions
@@ -2386,7 +2742,7 @@ define(['core/notification'], function(Notification) {
                             playSound('correct');
                             showFeedback(true, str('feedback_welldone', 'Well done!'));
                             progress[currentIndex] = true;
-                            setTimeout(advanceToNext, 800);
+                            offerNext();
                         }
                     }, 300);
                 });
@@ -2588,6 +2944,7 @@ define(['core/notification'], function(Notification) {
                     playSound('correct');
                     correctCount++;
                 } else {
+                    registerWrongAnswer();
                     playSound('wrong');
                     var card = document.getElementById('ala-tfs-card');
                     if (card) {
@@ -2630,7 +2987,7 @@ define(['core/notification'], function(Notification) {
                         // sound plays and the green checkmark is shown regardless of accuracy.
                         showFeedback(true, str('truefalse_activity_complete', 'Activity done.'));
                         progress[currentIndex] = true;
-                        setTimeout(advanceToNext, 800);
+                        offerNext();
                     } else {
                         renderState();
                     }
@@ -2798,7 +3155,7 @@ define(['core/notification'], function(Notification) {
                         showFeedback(true, str('feedback_welldone', 'Well done!'));
                         progress[currentIndex] = true;
                         renderState();
-                        setTimeout(advanceToNext, 800);
+                        offerNext();
                     } else {
                         showFeedback(false, str('feedback_incorrect', 'Incorrect!'));
                         renderState();
@@ -3069,6 +3426,8 @@ define(['core/notification'], function(Notification) {
             feedbackTimer = null;
         }
         hideFeedbackEl(document.getElementById(isPreviewMode ? 'ala-preview-feedback' : 'ala-player-feedback'));
+        clearNext();
+        resetActivityState(activities[index]);
 
         // V1.6.8 FIX-AUDIO-BLEED: Stop any voiceover from the previous activity before
         // starting a new one. Without this, the old TTS audio kept playing through the
@@ -4532,15 +4891,37 @@ define(['core/notification'], function(Notification) {
     // ===================================================================
     // INIT
     // ===================================================================
+
+    /**
+     * Reads the configuration PHP wrote into the page as a JSON data island.
+     *
+     * The payload holds the language strings, the scenario vocabulary and the
+     * activity manifest, which is far too large to be inlined as a js_call_amd()
+     * argument.
+     *
+     * @return {Object|null} The parsed configuration, or null when it is absent or invalid.
+     */
+    function readPageConfig() {
+        var el = document.getElementById('ala-player-config');
+        if (!el || !el.textContent) {
+            return null;
+        }
+        try {
+            return JSON.parse(el.textContent);
+        } catch (e) {
+            return null;
+        }
+    }
+
     return {
         /**
          * Entry point called by $PAGE->requires->js_call_amd().
          *
-         * @param {Object} config Configuration supplied by PHP, including strings and taxonomy.
+         * @param {Object} [config] Optional configuration; normally read from the page.
          * @return {void}
          */
         init: function(config) {
-            CONFIG = config || window.ALA_CONFIG;
+            CONFIG = config || readPageConfig() || window.ALA_CONFIG;
             if (!CONFIG) {
                 return;
             }
