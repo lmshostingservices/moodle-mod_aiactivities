@@ -2,6 +2,29 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.10.0] - 2026-10-23
+
+### Added
+- **Teachers can choose which activity types to generate.** The generation form now carries a
+  checkbox for each of the eight types, all ticked by default. Untick flashcards, or anything else,
+  and the set is built without it. A "Select all" link puts them back.
+- The choice is saved on the activity, so regenerating keeps the same types and the teacher sees
+  their last selection when they return.
+- The chosen types are sent to the generation service as `activityTypes`, and are also applied when
+  the result comes back, so the choice is honoured even against a service that does not yet read
+  that field.
+- Generating with no type ticked is refused before any request is made, so no credits are spent on
+  a set that could not be built.
+
+### Changed
+- New `activitytypes` column on the activity table, holding `all` or a comma separated list. It is
+  included in backups, and a backup taken before this release restores as `all`.
+
+### Notes
+- If the service returns only types the teacher excluded, every activity is kept rather than
+  discarded, and the teacher is told the choice could not be matched. Work that has been paid for
+  is never thrown away.
+
 ## [1.9.1] - 2026-09-09
 
 ### Fixed

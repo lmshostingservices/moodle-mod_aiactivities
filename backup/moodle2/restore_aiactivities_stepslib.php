@@ -76,6 +76,10 @@ class restore_aiactivities_activity_structure_step extends restore_activity_stru
         if (!isset($data->voiceid)) {
             $data->voiceid = 'Zephyr';
         }
+        if (!isset($data->activitytypes)) {
+            // Backups taken before release 1.10.0 carry no type restriction.
+            $data->activitytypes = \mod_aiactivities\local\activity_types::ALL;
+        }
 
         $newitemid = $DB->insert_record('aiactivities', $data);
         $this->apply_activity_instance($newitemid);

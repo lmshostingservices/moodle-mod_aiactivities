@@ -33,6 +33,7 @@ namespace mod_aiactivities;
  * @covers ::aiactivities_reset_userdata
  * @covers \mod_aiactivities\manifest_storage
  * @covers \mod_aiactivities\local\taxonomy
+ * @covers \mod_aiactivities\local\activity_types
  */
 final class lib_test extends \advanced_testcase {
     /**
@@ -268,5 +269,137 @@ final class lib_test extends \advanced_testcase {
 
         $this->assertNull(\mod_aiactivities\manifest_storage::compress(null));
         $this->assertNull(\mod_aiactivities\manifest_storage::decompress(null));
+    }
+
+    /**
+     * An empty, malformed or complete type list all mean "every type".
+     *
+     * @return void
+     */
+    public function test_activity_types_parse_falls_back_to_all(): void {
+        $all = \mod_aiactivities\local\activity_types::all();
+
+        $this->assertCount(8, $all);
+        $this->assertSame($all, \mod_aiactivities\local\activity_types::parse(''));
+        $this->assertSame($all, \mod_aiactivities\local\activity_types::parse('   '));
+        $this->assertSame($all, \mod_aiactivities\local\activity_types::parse('nonsense,alsonotatype'));
+        $this->assertSame($all, \mod_aiactivities\local\activity_types::parse(\mod_aiactivities\local\activity_types::ALL));
+        $this->assertSame($all, \mod_aiactivities\local\activity_types::parse(implode(',', $all)));
+    }
+
+    /**
+     * A partial list keeps only known types, in the canonical order.
+     *
+     * @return void
+     */
+    public function test_activity_types_parse_cleans_the_list(): void {
+        $parsed = \mod_aiactivities\local\activity_types::parse('flashcards, cardselect ,flashcards,bogus');
+
+        // Canonical order, deduplicated, with the unknown entry dropped.
+        $this->assertSame(['cardselect', 'flashcards'], $parsed);
+        $this->assertTrue(\mod_aiactivities\local\activity_types::is_restricted($parsed));
+    }
+
+    /**
+     * Only a genuine restriction is written to the instance.
+     *
+     * @return void
+     */
+    public function test_activity_types_stored_value(): void {
+        $all = \mod_aiactivities\local\activity_types::all();
+
+        $this->assertSame(
+            \mod_aiactivities\local\activity_types::ALL,
+            \mod_aiactivities\local\activity_types::to_stored_value($all)
+        );
+        $this->assertSame(
+            \mod_aiactivities\local\activity_types::ALL,
+            \mod_aiactivities\local\activity_types::to_stored_value([])
+        );
+        $this->assertSame(
+            'cardselect,flashcards',
+            \mod_aiactivities\local\activity_types::to_stored_value(['flashcards', 'cardselect'])
+        );
+    }
+
+    /**
+     * Filtering drops excluded types and keeps everything when nothing is excluded.
+     *
+     * @return void
+     */
+    public function test_activity_types_filter(): void {
+        $activities = [
+            ['type' => 'cardselect', 'title' => 'A'],
+            ['type' => 'flashcards', 'title' => 'B'],
+            ['type' => 'ordering', 'title' => 'C'],
+        ];
+
+        $all = \mod_aiactivities\local\activity_types::all();
+        $this->assertSame($activities, \mod_aiactivities\local\activity_types::filter($activities, $all));
+
+        $kept = \mod_aiactivities\local\activity_types::filter($activities, ['cardselect', 'ordering']);
+        $this->assertSame(['A', 'C'], array_column($kept, 'title'));
+
+        // Keys are re-indexed so the stored manifest stays a JSON array.
+        $this->assertSame([0, 1], array_keys($kept));
+    }
+
+    /**
+     * An activity of a type the plugin does not know is never discarded.
+     *
+     * @return void
+     */
+    public function test_activity_types_filter_keeps_unknown_types(): void {
+        $activities = [
+            ['type' => 'flashcards', 'title' => 'A'],
+            ['type' => 'somethingnew', 'title' => 'B'],
+            ['title' => 'C'],
+        ];
+
+        $kept = \mod_aiactivities\local\activity_types::filter($activities, ['cardselect']);
+
+        $this->assertSame(['B', 'C'], array_column($kept, 'title'));
+    }
+
+    /**
+     * The type labels all resolve in the language pack.
+     *
+     * @return void
+     */
+    public function test_activity_types_labels_resolve(): void {
+        $this->resetAfterTest();
+
+        foreach (\mod_aiactivities\local\activity_types::all() as $type) {
+            $key = \mod_aiactivities\local\activity_types::label_key($type);
+            $this->assertNotSame('', $key, "No label key for $type");
+            $this->assertStringNotContainsString(
+                '[[',
+                get_string($key, 'mod_aiactivities'),
+                "Label for $type is missing from the language pack"
+            );
+        }
+
+        $this->assertSame('', \mod_aiactivities\local\activity_types::label_key('notatype'));
+    }
+
+    /**
+     * A new instance starts with every type allowed.
+     *
+     * @return void
+     */
+    public function test_new_instance_allows_every_type(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $this->getDataGenerator()->create_module('aiactivities', ['course' => $course->id]);
+        $record = $DB->get_record('aiactivities', ['id' => $instance->id], '*', MUST_EXIST);
+
+        $this->assertSame(\mod_aiactivities\local\activity_types::ALL, $record->activitytypes);
+        $this->assertSame(
+            \mod_aiactivities\local\activity_types::all(),
+            \mod_aiactivities\local\activity_types::parse($record->activitytypes)
+        );
     }
 }

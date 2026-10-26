@@ -62,6 +62,10 @@ $string['language_label'] = 'Language';
 
 $string['activitycount_label'] = 'Number of activities';
 
+$string['activitytypes_help'] = 'Untick any type you do not want. Leave them all ticked to let the AI choose the best mix for your content.';
+$string['activitytypes_label'] = 'Activity types';
+$string['activitytypes_selectall'] = 'Select all';
+
 $string['generate_btn'] = 'Generate activities';
 $string['generating'] = 'Generating activities...';
 $string['generate_success'] = 'Activities generated successfully!';
@@ -335,6 +339,8 @@ $string['js_type_flashcards'] = 'Flashcards';
 $string['js_type_matching'] = 'Matching pairs';
 $string['js_type_ordering'] = 'Put in order';
 $string['js_type_truefalse'] = 'True or False';
+$string['js_types_none'] = 'Choose at least one activity type before generating.';
+$string['js_types_notapplied'] = 'The generation service could not match your activity type choice, so every activity it produced has been kept rather than discarding work you have paid for.';
 $string['js_voiceover_controls'] = 'Narration controls';
 $string['js_voiceover_mute'] = 'Mute narration';
 $string['js_voiceover_play'] = 'Play narration';

@@ -92,5 +92,26 @@ function xmldb_aiactivities_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026082800, 'aiactivities');
     }
 
+    if ($oldversion < 2026102300) {
+        // Release 1.10.0 lets a teacher restrict a set to chosen activity types.
+        // Every existing set was generated from all of them.
+        $table = new xmldb_table('aiactivities');
+        $field = new xmldb_field(
+            'activitytypes',
+            XMLDB_TYPE_CHAR,
+            '255',
+            null,
+            XMLDB_NOTNULL,
+            null,
+            \mod_aiactivities\local\activity_types::ALL,
+            'voiceid'
+        );
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2026102300, 'aiactivities');
+    }
+
     return true;
 }

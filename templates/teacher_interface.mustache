@@ -87,6 +87,22 @@
                 </div>
             </div>
 
+            <fieldset class="ala-form-group ala-types-fieldset">
+                <legend class="ala-label">{{#str}}activitytypes_label, mod_aiactivities{{/str}}</legend>
+                <small class="ala-help">{{#str}}activitytypes_help, mod_aiactivities{{/str}}</small>
+                <div class="ala-types-grid" id="ala-activity-types">
+                    {{#activitytypes}}
+                        <label class="ala-type-option">
+                            <input type="checkbox" class="ala-type-checkbox" value="{{value}}" {{#checked}}checked{{/checked}}>
+                            <span class="ala-type-name">{{label}}</span>
+                        </label>
+                    {{/activitytypes}}
+                </div>
+                <div class="ala-types-actions">
+                    <button type="button" id="ala-types-all" class="ala-link-btn">{{#str}}activitytypes_selectall, mod_aiactivities{{/str}}</button>
+                </div>
+            </fieldset>
+
             <div class="ala-scenario-section">
                 <div class="ala-form-group">
                     <label class="ala-toggle-label">

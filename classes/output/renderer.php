@@ -83,9 +83,33 @@ class renderer extends plugin_renderer_base {
             'voices' => $this->voice_options($instance->voiceid ?? 'Zephyr'),
             'voicegenders' => $this->voice_gender_options($instance->voicegender ?? 'female'),
             'workerlevels' => $this->worker_level_options(),
+            'activitytypes' => $this->activity_type_options(
+                $instance->activitytypes ?? \mod_aiactivities\local\activity_types::ALL
+            ),
         ];
 
         return $this->render_from_template('mod_aiactivities/teacher_interface', $context);
+    }
+
+    /**
+     * Builds the activity type checkboxes for the generation form.
+     *
+     * @param string $stored The stored comma separated list, or the all sentinel.
+     * @return array[] Template context for the checkbox list.
+     */
+    private function activity_type_options(string $stored): array {
+        $selected = \mod_aiactivities\local\activity_types::parse($stored);
+
+        $options = [];
+        foreach (\mod_aiactivities\local\activity_types::all() as $type) {
+            $options[] = [
+                'value' => $type,
+                'label' => get_string(\mod_aiactivities\local\activity_types::label_key($type), 'mod_aiactivities'),
+                'checked' => in_array($type, $selected, true),
+            ];
+        }
+
+        return $options;
     }
 
     /**

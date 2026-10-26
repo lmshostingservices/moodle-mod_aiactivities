@@ -144,11 +144,13 @@ switch ($action) {
         $result = json_decode($response, true);
 
         if ((int)$curl->info['http_code'] === 200 && $result && !empty($result['ok']) && !empty($result['activities'])) {
-            aiactivities_store_activities($instance->id, $result['activities'], $content, $options);
+            [$activities, $typesapplied] = aiactivities_apply_type_filter($result['activities'], $options['activitytypes']);
+            aiactivities_store_activities($instance->id, $activities, $content, $options);
             $success = [
                 'ok' => true,
-                'activities' => $result['activities'],
+                'activities' => $activities,
                 'creditsUsed' => $result['creditsUsed'] ?? 0,
+                'typesapplied' => $typesapplied,
             ];
             echo json_encode($success);
         } else {
@@ -223,9 +225,10 @@ switch ($action) {
         $content = optional_param('content', '', PARAM_TEXT);
         $options = aiactivities_read_generation_options();
 
+        [$activities, $typesapplied] = aiactivities_apply_type_filter($activities, $options['activitytypes']);
         aiactivities_store_activities($instance->id, $activities, $content, $options);
 
-        echo json_encode(['ok' => true]);
+        echo json_encode(['ok' => true, 'activities' => $activities, 'typesapplied' => $typesapplied]);
         break;
 
     case 'savevoicesettings':
@@ -465,6 +468,9 @@ function aiactivities_read_generation_options(): array {
         'voiceoverenabled' => optional_param('voiceoverenabled', '0', PARAM_TEXT) === '1',
         'voicegender' => clean_param(optional_param('voicegender', 'female', PARAM_TEXT), PARAM_TEXT),
         'voiceid' => clean_param(optional_param('voiceid', 'Zephyr', PARAM_TEXT), PARAM_TEXT),
+        'activitytypes' => \mod_aiactivities\local\activity_types::parse(
+            optional_param('activitytypes', '', PARAM_TEXT)
+        ),
     ];
 }
 
@@ -491,6 +497,12 @@ function aiactivities_build_generation_payload(
         'activityCount' => $options['activitycount'],
     ];
 
+    // Only sent when the teacher excluded something, so an unrestricted set keeps
+    // the request shape the service has always received.
+    if (\mod_aiactivities\local\activity_types::is_restricted($options['activitytypes'])) {
+        $payload['activityTypes'] = array_values($options['activitytypes']);
+    }
+
     if (!empty($options['scenariomode'])) {
         $payload['scenarioMode'] = true;
         foreach ($options['scenario'] as $key => $value) {
@@ -507,6 +519,29 @@ function aiactivities_build_generation_payload(
     }
 
     return $payload;
+}
+
+/**
+ * Applies the teacher's activity type choice to a generated set.
+ *
+ * The generation service is asked for the chosen types, but the choice is also
+ * enforced here so an older service that ignores the request still produces the
+ * set the teacher asked for. If honouring the choice would leave nothing at all,
+ * the full set is kept instead: the site has already paid for it, and an empty
+ * set would be worse than an unfiltered one.
+ *
+ * @param array $activities The generated activities.
+ * @param string[] $types The selected types.
+ * @return array[] The activities to store, and whether the choice was honourable.
+ */
+function aiactivities_apply_type_filter(array $activities, array $types): array {
+    $kept = \mod_aiactivities\local\activity_types::filter($activities, $types);
+
+    if (!$kept) {
+        return [array_values($activities), false];
+    }
+
+    return [$kept, true];
 }
 
 /**
@@ -532,6 +567,7 @@ function aiactivities_store_activities(
     $update->language = $options['language'];
     $update->activitycount = $options['activitycount'];
     $update->voiceoverenabled = !empty($options['voiceoverenabled']) ? 1 : 0;
+    $update->activitytypes = \mod_aiactivities\local\activity_types::to_stored_value($options['activitytypes']);
     $update->timemodified = time();
 
     if (trim($content) !== '') {

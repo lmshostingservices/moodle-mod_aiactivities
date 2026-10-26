@@ -74,6 +74,23 @@ define(['core/notification'], function(Notification) {
         }
     }
 
+    /**
+     * The activity types currently ticked in the generation form.
+     *
+     * @return {String[]} The checked type identifiers, in the order they appear.
+     */
+    function selectedActivityTypes() {
+        var boxes = document.querySelectorAll('#ala-activity-types .ala-type-checkbox');
+        var selected = [];
+        Array.prototype.forEach.call(boxes, function(box) {
+            if (box.checked) {
+                selected.push(box.value);
+            }
+        });
+
+        return selected;
+    }
+
     // ========== NOTIFICATIONS ==========
 
     /**
@@ -4366,6 +4383,16 @@ define(['core/notification'], function(Notification) {
         // correct on first paint.
         updateAlaCost();
 
+        // Activity type checkboxes, and the link that re-ticks all of them.
+        var selectAllTypesBtn = document.getElementById('ala-types-all');
+        if (selectAllTypesBtn) {
+            selectAllTypesBtn.addEventListener('click', function() {
+                document.querySelectorAll('#ala-activity-types .ala-type-checkbox').forEach(function(box) {
+                    box.checked = true;
+                });
+            });
+        }
+
         // Job level pills  -  multi-select toggle.
         var pillContainer = document.getElementById('ala-job-level-pills');
         if (pillContainer) {
@@ -4432,6 +4459,15 @@ define(['core/notification'], function(Notification) {
 
                 var language = document.getElementById('ala-language').value;
                 var activitycount = parseInt(document.getElementById('ala-activitycount').value, 10);
+                var activitytypes = selectedActivityTypes();
+
+                if (activitytypes.length === 0) {
+                    Notification.alert(
+                        str('js_dialog_title', 'AI Learning Activities'),
+                        str('js_types_none', 'Choose at least one activity type before generating.')
+                    );
+                    return;
+                }
 
                 // Show progress
                 genBtn.disabled = true;
@@ -4459,7 +4495,8 @@ define(['core/notification'], function(Notification) {
                 var params = {
                     content: content,
                     language: language,
-                    activitycount: activitycount
+                    activitycount: activitycount,
+                    activitytypes: activitytypes.join(',')
                 };
 
                 var scenarioToggle = document.getElementById('ala-scenario-toggle');
@@ -4543,7 +4580,8 @@ define(['core/notification'], function(Notification) {
                                     activitiesjson: JSON.stringify(result.activities),
                                     content: content,
                                     language: language,
-                                    activitycount: activitycount
+                                    activitycount: activitycount,
+                                    activitytypes: activitytypes.join(',')
                                 };
                                 if (voiceoverOn) {
                                     saveParams.voiceoverenabled = '1';
@@ -4554,6 +4592,11 @@ define(['core/notification'], function(Notification) {
                                 }
                                 ajaxCall('save_generated', saveParams, function(saveResult) {
                                     if (saveResult && saveResult.ok) {
+                                        if (saveResult.typesapplied === false) {
+                                            notifyError(str('js_types_notapplied',
+                                                'The generation service could not match your activity ' +
+                                                'type choice, so every activity it produced has been kept.'));
+                                        }
                                         if (progressText) {
                                             progressText.textContent =
                                                 str('generate_success', 'Activities generated successfully!');

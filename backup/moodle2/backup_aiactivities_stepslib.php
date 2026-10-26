@@ -38,7 +38,7 @@ class backup_aiactivities_activity_structure_step extends backup_activity_struct
             'name', 'intro', 'introformat', 'grade',
             'content', 'language', 'activitycount', 'activitiesjson',
             'completionallcorrect', 'voiceoverenabled', 'voicegender', 'voiceid',
-            'timecreated', 'timemodified',
+            'activitytypes', 'timecreated', 'timemodified',
         ];
         $aiactivities = new backup_nested_element('aiactivities', ['id'], $instancefields);
 

@@ -393,7 +393,7 @@ function aiactivities_get_js_teacher_string_keys(): array {
         'js_err_gentimeout', 'js_err_noaudioactivities', 'js_err_pollfailed', 'js_err_savefailed',
         'js_err_savegenerated', 'js_generate_btn', 'js_preview_activity', 'js_preview_complete',
         'js_preview_heading', 'js_role_remove', 'js_sector_placeholder', 'error_no_content',
-        'generate_success', 'generating',
+        'generate_success', 'generating', 'js_types_none', 'js_types_notapplied',
     ];
     return array_merge($keys, $extrakeys);
 }
@@ -443,7 +443,8 @@ function aiactivities_get_js_string_map(): array {
         'js_streak_12_msg', 'js_streak_16_title', 'js_streak_16_msg',
         'js_streak_chip_label', 'js_type_cardselect',
         'js_type_categorysort', 'js_type_columnsort', 'js_type_fillinblank', 'js_type_flashcards',
-        'js_type_matching', 'js_type_ordering', 'js_type_truefalse', 'js_voiceover_controls',
+        'js_type_matching', 'js_type_ordering', 'js_type_truefalse', 'js_types_none',
+        'js_types_notapplied', 'js_voiceover_controls',
         'js_voiceover_mute', 'js_voiceover_play', 'js_voiceover_stop', 'js_voiceover_stop_label',
         'js_voiceover_unmute',
     ];
