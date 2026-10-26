@@ -3396,6 +3396,8 @@ body.dark .ala-eta-time {
 .ala-container .ala-current-item:focus-visible,
 .ala-container .ala-preview-clickable:focus-visible,
 .ala-container .ala-preview-edit:focus-visible,
+.ala-container .ala-preview-delete:focus-visible,
+.ala-container .ala-undo-btn:focus-visible,
 .ala-container .ala-btn:focus-visible,
 .ala-container .ala-tap-btn:focus-visible,
 .ala-container .ala-tfs-btn-true:focus-visible,
@@ -3622,4 +3624,60 @@ body.dark .ala-eta-time {
 
 .ala-link-btn:hover {
     color: var(--ala-primary-dark);
+}
+
+/* ===================================================================
+   REMOVE ACTIVITY
+   The per-row remove control and the undo offer that follows it.
+   =================================================================== */
+.ala-preview-delete {
+    color: var(--ala-text-muted);
+    flex-shrink: 0;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ala-preview-delete:hover,
+.ala-preview-delete:focus-visible {
+    color: var(--ala-error);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.ala-preview-delete[aria-disabled="true"],
+.ala-preview-delete.ala-is-busy {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.ala-preview-delete[aria-disabled="true"]:hover,
+.ala-preview-delete.ala-is-busy:hover {
+    color: var(--ala-text-muted);
+    background: none;
+}
+
+.ala-undo-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--ala-border);
+    border-radius: 8px;
+    background: var(--ala-bg);
+    font-size: 14px;
+}
+
+.ala-undo-text {
+    color: var(--ala-text-secondary);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.ala-undo-btn {
+    flex: 0 0 auto;
+    font-size: 14px;
+    font-weight: 600;
 }

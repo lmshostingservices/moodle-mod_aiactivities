@@ -34,6 +34,8 @@ namespace mod_aiactivities;
  * @covers \mod_aiactivities\manifest_storage
  * @covers \mod_aiactivities\local\taxonomy
  * @covers \mod_aiactivities\local\activity_types
+ * @covers \mod_aiactivities\local\attempt_progress
+ * @covers \mod_aiactivities\local\manifest_edit
  */
 final class lib_test extends \advanced_testcase {
     /**
@@ -401,5 +403,424 @@ final class lib_test extends \advanced_testcase {
             \mod_aiactivities\local\activity_types::all(),
             \mod_aiactivities\local\activity_types::parse($record->activitytypes)
         );
+    }
+
+    /**
+     * Creates an attempt with the given progress, for the remapping tests.
+     *
+     * @param int $instanceid The instance the attempt belongs to.
+     * @param int $userid The student.
+     * @param array $progress Position => true for each completed activity.
+     * @param int $current The position the student is sitting on.
+     * @param int $total The activity count at the time.
+     * @param int $status 0 for in progress, 1 for completed.
+     * @return int The new attempt id.
+     */
+    private function make_attempt(
+        int $instanceid,
+        int $userid,
+        array $progress,
+        int $current,
+        int $total,
+        int $status = 0
+    ): int {
+        global $DB;
+
+        return $DB->insert_record('aiactivities_attempts', (object)[
+            'aiactivitiesid' => $instanceid,
+            'userid' => $userid,
+            'progressjson' => json_encode((object)$progress),
+            'currentactivity' => $current,
+            'completedcount' => count(array_filter($progress)),
+            'totalcount' => $total,
+            'score' => 0,
+            'status' => $status,
+            'timecreated' => time(),
+            'timemodified' => time(),
+        ]);
+    }
+
+    /**
+     * Removing an activity moves the later answers down with it.
+     *
+     * @return void
+     */
+    public function test_progress_shifts_after_removal(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $this->getDataGenerator()->create_module('aiactivities', ['course' => $course->id]);
+        $user = $this->getDataGenerator()->create_user();
+
+        // Six activities; the student answered 0, 1, 2 and 4, and is sitting on 5.
+        $attemptid = $this->make_attempt($instance->id, $user->id, [0 => true, 1 => true, 2 => true, 4 => true], 5, 6);
+
+        $changed = \mod_aiactivities\local\attempt_progress::shift_after_removal($instance->id, 2, 5);
+        $this->assertSame(1, $changed);
+
+        $attempt = $DB->get_record('aiactivities_attempts', ['id' => $attemptid], '*', MUST_EXIST);
+        $progress = json_decode($attempt->progressjson, true);
+
+        // The answer for the removed activity is gone, and what was 4 is now 3.
+        $this->assertSame([0 => true, 1 => true, 3 => true], $progress);
+        $this->assertEquals(4, $attempt->currentactivity);
+        $this->assertEquals(3, $attempt->completedcount);
+        $this->assertEquals(5, $attempt->totalcount);
+    }
+
+    /**
+     * A student sitting on the removed activity stays in place, which is now
+     * the activity that followed it.
+     *
+     * @return void
+     */
+    public function test_current_position_when_sitting_on_the_removed_activity(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $this->getDataGenerator()->create_module('aiactivities', ['course' => $course->id]);
+        $user = $this->getDataGenerator()->create_user();
+
+        $attemptid = $this->make_attempt($instance->id, $user->id, [0 => true, 1 => true], 2, 4);
+
+        \mod_aiactivities\local\attempt_progress::shift_after_removal($instance->id, 2, 3);
+
+        $attempt = $DB->get_record('aiactivities_attempts', ['id' => $attemptid], '*', MUST_EXIST);
+        $this->assertEquals(2, $attempt->currentactivity);
+        $this->assertEquals(3, $attempt->totalcount);
+    }
+
+    /**
+     * A student on the last activity of a set that is then removed is treated as
+     * having reached the end, which is one past the last position, exactly as
+     * aiactivities_clamp_index() allows elsewhere in the plugin.
+     *
+     * @return void
+     */
+    public function test_current_position_is_clamped_to_the_new_end(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $this->getDataGenerator()->create_module('aiactivities', ['course' => $course->id]);
+        $user = $this->getDataGenerator()->create_user();
+
+        $attemptid = $this->make_attempt($instance->id, $user->id, [0 => true, 1 => true], 2, 3);
+
+        \mod_aiactivities\local\attempt_progress::shift_after_removal($instance->id, 2, 2);
+
+        $attempt = $DB->get_record('aiactivities_attempts', ['id' => $attemptid], '*', MUST_EXIST);
+        $this->assertEquals(2, $attempt->currentactivity);
+        $this->assertEquals(2, $attempt->completedcount);
+        $this->assertEquals(2, $attempt->totalcount);
+        // Never past one beyond the end, whatever the student was sitting on.
+        $this->assertLessThanOrEqual((int)$attempt->totalcount, (int)$attempt->currentactivity);
+    }
+
+    /**
+     * A finished attempt stays finished: it loses one answer and one activity.
+     *
+     * @return void
+     */
+    public function test_completed_attempt_stays_consistent(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $this->getDataGenerator()->create_module('aiactivities', ['course' => $course->id]);
+        $user = $this->getDataGenerator()->create_user();
+
+        $attemptid = $this->make_attempt(
+            $instance->id,
+            $user->id,
+            [0 => true, 1 => true, 2 => true],
+            2,
+            3,
+            1
+        );
+
+        // A finished attempt sits one past the last activity.
+        $DB->set_field('aiactivities_attempts', 'currentactivity', 3, ['id' => $attemptid]);
+
+        \mod_aiactivities\local\attempt_progress::shift_after_removal($instance->id, 1, 2);
+
+        $attempt = $DB->get_record('aiactivities_attempts', ['id' => $attemptid], '*', MUST_EXIST);
+
+        // The middle activity's answer is gone and the last one moved down.
+        $this->assertSame([0 => true, 1 => true], json_decode($attempt->progressjson, true));
+        // Still one past the end, so the attempt still reads as finished.
+        $this->assertEquals(2, $attempt->currentactivity);
+        $this->assertEquals(2, $attempt->completedcount);
+        $this->assertEquals(2, $attempt->totalcount);
+    }
+
+    /**
+     * Undoing a removal puts the later answers back where they were.
+     *
+     * @return void
+     */
+    public function test_progress_shifts_back_after_insertion(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $this->getDataGenerator()->create_module('aiactivities', ['course' => $course->id]);
+        $user = $this->getDataGenerator()->create_user();
+
+        $attemptid = $this->make_attempt($instance->id, $user->id, [0 => true, 1 => true, 3 => true], 4, 5);
+
+        \mod_aiactivities\local\attempt_progress::shift_after_insertion($instance->id, 2, 6);
+
+        $attempt = $DB->get_record('aiactivities_attempts', ['id' => $attemptid], '*', MUST_EXIST);
+        $progress = json_decode($attempt->progressjson, true);
+
+        // Positions from 2 upwards moved up one; the restored activity itself
+        // has no recorded answer.
+        $this->assertSame([0 => true, 1 => true, 4 => true], $progress);
+        $this->assertEquals(5, $attempt->currentactivity);
+        $this->assertEquals(3, $attempt->completedcount);
+        $this->assertEquals(6, $attempt->totalcount);
+    }
+
+    /**
+     * Removing and putting back leaves the untouched answers exactly as they were.
+     *
+     * @return void
+     */
+    public function test_removal_then_insertion_round_trips(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $this->getDataGenerator()->create_module('aiactivities', ['course' => $course->id]);
+        $user = $this->getDataGenerator()->create_user();
+
+        // Position 2 is the one being removed and put back. A student sitting
+        // anywhere else comes back exactly where they were; a student who was
+        // sitting on the removed activity has moved on to the next one and
+        // stays there, because nothing in the stored position tells them apart
+        // from a student who was already on it.
+        $expected = [0 => 0, 1 => 1, 2 => 3, 3 => 3, 4 => 4];
+
+        foreach ($expected as $current => $after) {
+            $attemptid = $this->make_attempt($instance->id, $user->id, [0 => true, 1 => true, 3 => true], $current, 5);
+
+            \mod_aiactivities\local\attempt_progress::shift_after_removal($instance->id, 2, 4);
+            \mod_aiactivities\local\attempt_progress::shift_after_insertion($instance->id, 2, 5);
+
+            $attempt = $DB->get_record('aiactivities_attempts', ['id' => $attemptid], '*', MUST_EXIST);
+
+            // The answers always come back exactly as they were.
+            $this->assertSame(
+                [0 => true, 1 => true, 3 => true],
+                json_decode($attempt->progressjson, true),
+                "Answers moved for a student sitting on $current"
+            );
+            $this->assertEquals($after, $attempt->currentactivity, "Wrong position for a student on $current");
+            $this->assertEquals(5, $attempt->totalcount);
+
+            $DB->delete_records('aiactivities_attempts', ['id' => $attemptid]);
+        }
+    }
+
+    /**
+     * Only the attempts of the instance being changed are touched.
+     *
+     * @return void
+     */
+    public function test_other_instances_are_left_alone(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $this->getDataGenerator()->create_module('aiactivities', ['course' => $course->id]);
+        $other = $this->getDataGenerator()->create_module('aiactivities', ['course' => $course->id]);
+        $user = $this->getDataGenerator()->create_user();
+
+        $this->make_attempt($instance->id, $user->id, [0 => true, 1 => true], 1, 3);
+        $otherid = $this->make_attempt($other->id, $user->id, [0 => true, 1 => true], 1, 3);
+
+        $changed = \mod_aiactivities\local\attempt_progress::shift_after_removal($instance->id, 0, 2);
+        $this->assertSame(1, $changed);
+
+        $untouched = $DB->get_record('aiactivities_attempts', ['id' => $otherid], '*', MUST_EXIST);
+        $this->assertSame([0 => true, 1 => true], json_decode($untouched->progressjson, true));
+        $this->assertEquals(3, $untouched->totalcount);
+    }
+
+    /**
+     * An attempt with no recorded progress survives the remapping.
+     *
+     * @return void
+     */
+    public function test_empty_progress_is_handled(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $this->getDataGenerator()->create_module('aiactivities', ['course' => $course->id]);
+        $user = $this->getDataGenerator()->create_user();
+
+        $attemptid = $this->make_attempt($instance->id, $user->id, [], 0, 3);
+
+        \mod_aiactivities\local\attempt_progress::shift_after_removal($instance->id, 1, 2);
+
+        $attempt = $DB->get_record('aiactivities_attempts', ['id' => $attemptid], '*', MUST_EXIST);
+        $this->assertSame([], json_decode($attempt->progressjson, true));
+        $this->assertEquals(0, $attempt->currentactivity);
+        $this->assertEquals(0, $attempt->completedcount);
+        $this->assertEquals(2, $attempt->totalcount);
+    }
+
+    /**
+     * Progress that cannot be read is replaced with an empty record rather than
+     * left to misalign. This is deliberate: there is nothing to realign, and a
+     * value that will not decode cannot be preserved meaningfully.
+     *
+     * @return void
+     */
+    public function test_unreadable_progress_is_reset(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $this->getDataGenerator()->create_module('aiactivities', ['course' => $course->id]);
+        $user = $this->getDataGenerator()->create_user();
+
+        $attemptid = $this->make_attempt($instance->id, $user->id, [0 => true], 1, 3);
+        $DB->set_field('aiactivities_attempts', 'progressjson', 'not json at all', ['id' => $attemptid]);
+
+        \mod_aiactivities\local\attempt_progress::shift_after_removal($instance->id, 1, 2);
+
+        $attempt = $DB->get_record('aiactivities_attempts', ['id' => $attemptid], '*', MUST_EXIST);
+        $this->assertSame([], json_decode($attempt->progressjson, true));
+        $this->assertEquals(0, $attempt->completedcount);
+        $this->assertEquals(2, $attempt->totalcount);
+    }
+
+    /**
+     * Every language string the player module asks for is actually delivered to it.
+     *
+     * The string map is maintained by hand, so a key used in JavaScript but left
+     * out of the map would silently fall back to untranslated English. This reads
+     * the module source and checks the two against each other.
+     *
+     * @return void
+     */
+    public function test_every_js_string_key_is_delivered(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+
+        $source = file_get_contents($CFG->dirroot . '/mod/aiactivities/amd/src/player.js');
+        $this->assertNotEmpty($source);
+
+        $matches = [];
+        // Only keys written as a plain literal; the streak messages build their
+        // key from a counter and are checked by test_js_strings_all_resolve.
+        preg_match_all("/\\bstr(?:WithParam)?\\(\\s*'([a-z0-9_]+)'\\s*[,)]/i", $source, $matches);
+        $used = array_unique($matches[1]);
+        $this->assertNotEmpty($used);
+
+        $delivered = aiactivities_get_js_string_map();
+
+        $missing = [];
+        foreach ($used as $key) {
+            if (!array_key_exists($key, $delivered)) {
+                $missing[] = $key;
+            }
+        }
+
+        $this->assertSame([], $missing, 'Keys used by player.js but missing from the string map');
+    }
+
+    /**
+     * An edit prepared against a different version of the list is refused.
+     *
+     * @return void
+     */
+    public function test_manifest_edit_detects_a_changed_list(): void {
+        $activities = [
+            ['type' => 'cardselect', 'title' => 'One'],
+            ['type' => 'flashcards', 'title' => 'Two'],
+            ['type' => 'ordering', 'title' => 'Three'],
+        ];
+
+        $matches = \mod_aiactivities\local\manifest_edit::still_matches($activities, 3, 1, 'flashcards', 'Two');
+        $this->assertTrue($matches);
+
+        // Someone else removed one first, so the positions have moved.
+        $this->assertFalse(
+            \mod_aiactivities\local\manifest_edit::still_matches($activities, 4, 1, 'flashcards', 'Two')
+        );
+        // The list is the right length but holds something else at that position.
+        $this->assertFalse(
+            \mod_aiactivities\local\manifest_edit::still_matches($activities, 3, 1, 'ordering', 'Three')
+        );
+        // A position that is not there at all.
+        $this->assertFalse(
+            \mod_aiactivities\local\manifest_edit::still_matches($activities, 3, 9, 'flashcards', 'Two')
+        );
+
+        $this->assertTrue(\mod_aiactivities\local\manifest_edit::still_has_count($activities, 3));
+        $this->assertFalse(\mod_aiactivities\local\manifest_edit::still_has_count($activities, 2));
+    }
+
+    /**
+     * A title holding characters that cleaning alters still matches itself.
+     *
+     * The values arrive cleaned as PARAM_TEXT, so a title the generation service
+     * wrote with, say, an angle bracket must not make the edit unperformable.
+     *
+     * @return void
+     */
+    public function test_manifest_edit_compares_cleaned_values(): void {
+        $this->resetAfterTest();
+
+        $activities = [
+            ['type' => 'cardselect', 'title' => 'Safety <signs> & symbols'],
+        ];
+
+        // What the browser sent and what the server cleaned it to.
+        $sent = clean_param('Safety <signs> & symbols', PARAM_TEXT);
+
+        $this->assertTrue(
+            \mod_aiactivities\local\manifest_edit::still_matches($activities, 1, 0, 'cardselect', $sent)
+        );
+        $this->assertFalse(
+            \mod_aiactivities\local\manifest_edit::still_matches($activities, 1, 0, 'cardselect', 'Something else')
+        );
+    }
+
+    /**
+     * Only something shaped like an activity may be written back into a set.
+     *
+     * @return void
+     */
+    public function test_manifest_edit_rejects_unusable_payloads(): void {
+        $this->assertTrue(
+            \mod_aiactivities\local\manifest_edit::is_storable(['type' => 'cardselect', 'title' => 'One'])
+        );
+        // A type this release does not know is still kept: it can only have come
+        // from the generation service.
+        $this->assertTrue(\mod_aiactivities\local\manifest_edit::is_storable(['type' => 'somethingnew']));
+
+        $this->assertFalse(\mod_aiactivities\local\manifest_edit::is_storable([]));
+        $this->assertFalse(\mod_aiactivities\local\manifest_edit::is_storable(['title' => 'No type']));
+        $this->assertFalse(\mod_aiactivities\local\manifest_edit::is_storable(['type' => '   ']));
+        $this->assertFalse(\mod_aiactivities\local\manifest_edit::is_storable(['type' => 42]));
+        $this->assertFalse(\mod_aiactivities\local\manifest_edit::is_storable('not an array'));
+        $this->assertFalse(\mod_aiactivities\local\manifest_edit::is_storable(null));
     }
 }

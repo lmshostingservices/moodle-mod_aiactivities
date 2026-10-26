@@ -2,6 +2,41 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.11.1] - 2026-10-26
+
+### Fixed
+- The two fields that carry the state of the list an edit was prepared against are read as
+  PARAM_TEXT rather than PARAM_RAW_TRIMMED, which the release pipeline flags. Both sides of the
+  comparison are now put through the same cleaning, so an activity title holding a character that
+  cleaning alters still matches itself and the edit is not refused for no reason.
+
+## [1.11.0] - 2026-10-26
+
+### Added
+- **Teachers can remove a single activity from a generated set.** Each row in the activity list now
+  carries a remove button. It asks for confirmation, naming the activity, and once it has gone an
+  undo offer stays on screen for eight seconds.
+- Saved student progress is realigned when an activity is removed, so recorded answers stay attached
+  to the activity they belong to rather than shifting onto the wrong one. The answer for the removed
+  activity is dropped and the attempt total is corrected.
+- The last remaining activity in a set cannot be removed.
+
+### Changed
+- An edit now carries the state of the list it was prepared against, and is refused if the list has
+  moved on. Two quick clicks, two browser tabs or two teachers working at once can no longer remove
+  the wrong activity.
+- Removing or restoring an activity rewrites the set and the attempts in a single transaction, so a
+  failure part way through cannot leave the two out of step.
+- Saved progress is bounded to the set as it now stands, so a page a student left open before an
+  edit can no longer report answers for activities that are no longer there.
+
+### Notes
+- A student sitting on the exact activity that was removed moves on to the one that followed it. If
+  the removal is then undone they stay on that following activity rather than going back, because
+  their stored position no longer distinguishes them from a student who was already there. Everyone
+  else comes back exactly where they were.
+- Removing a second activity replaces the undo offer for the first, which cannot then be recovered.
+
 ## [1.10.0] - 2026-10-23
 
 ### Added

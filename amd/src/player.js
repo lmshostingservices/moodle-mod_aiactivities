@@ -24,6 +24,9 @@ define(['core/notification'], function(Notification) {
     var activitydone = false; // The current activity has already been completed.
     var activityscored = true; // The current activity has answers that can be wrong.
     var streakTimer = null;
+    var undoTimer = null; // Dismisses the undo bar shown after a removal.
+    var deleteInFlight = false; // Guards against a second removal before the first lands.
+    var UNDO_WINDOW_MS = 8000; // How long the undo offer stays on screen.
     var advancing = false; // V1.5.54 FIX-DOUBLE-CLICK-SKIP: guard against advanceToNext() firing twice
     // v1.6.8 FIX-AUDIO-BLEED: reference to the playing voiceover BufferSourceNode
     // so it can be stopped before the next activity starts.
@@ -52,6 +55,24 @@ define(['core/notification'], function(Notification) {
     function str(key, fallback) {
         var s = (CONFIG && CONFIG.strings) ? CONFIG.strings[key] : null;
         return (s === undefined || s === null || s === '') ? fallback : s;
+    }
+
+    /**
+     * Look up a language string that carries a single {$a} placeholder.
+     *
+     * PHP hands the strings over unresolved, so the substitution happens here.
+     *
+     * @param {String} key The string identifier.
+     * @param {String} value The value to put in place of the placeholder.
+     * @return {String} The resolved string.
+     */
+    function strWithParam(key, value) {
+        var template = str(key, '');
+        if (!template) {
+            return String(value === undefined || value === null ? '' : value);
+        }
+
+        return template.replace('{$a}', String(value === undefined || value === null ? '' : value));
     }
 
     /**
@@ -3813,6 +3834,8 @@ define(['core/notification'], function(Notification) {
             return;
         }
 
+        clearUndoDelete();
+
         var manageSection = document.getElementById('ala-manage-section');
         var editSection = document.getElementById('ala-teacher-edit');
         var editContent = document.getElementById('ala-edit-content');
@@ -4068,6 +4091,10 @@ define(['core/notification'], function(Notification) {
     function buildPreviewItemHtml(act, idx) {
         var editLabel = escapeHtml(str('js_edit_activity', 'Edit activity'));
         var playLabel = escapeHtml(str('js_preview_activity', 'Preview activity'));
+        // Naming the activity keeps the rows apart for anyone listening to the
+        // list rather than looking at it.
+        var deleteLabel = escapeHtml(strWithParam('js_delete_named', act.title));
+        var onlyOne = activities.length <= 1;
         return '<div class="ala-preview-item ala-preview-clickable" data-activity-index="' + idx + '">' +
             '<span class="ala-preview-num">' + (idx + 1) + '</span>' +
             '<span class="ala-preview-type">' + escapeHtml(activityTypeLabel(act.type)) + '</span>' +
@@ -4083,6 +4110,14 @@ define(['core/notification'], function(Notification) {
             '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" ' +
             'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
             'stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>' +
+            '<span class="ala-preview-delete" data-delete-index="' + idx + '" role="button" tabindex="0"' +
+            ' aria-disabled="' + (onlyOne ? 'true' : 'false') + '"' +
+            ' title="' + deleteLabel + '" aria-label="' + deleteLabel + '">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" ' +
+            'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+            'stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/>' +
+            '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
+            '<path d="M10 11v6"/><path d="M14 11v6"/></svg></span>' +
             '</div>';
     }
 
@@ -4129,11 +4164,207 @@ define(['core/notification'], function(Notification) {
             });
         });
 
+        var deleteBtns = previewEl.querySelectorAll('.ala-preview-delete');
+        deleteBtns.forEach(function(btn) {
+            onActivate(btn, function(e) {
+                e.stopPropagation();
+                confirmDeleteActivity(parseInt(btn.getAttribute('data-delete-index'), 10));
+            });
+        });
+
         var items = previewEl.querySelectorAll('.ala-preview-clickable');
         items.forEach(function(item) {
             item.addEventListener('click', function() {
                 openTeacherPreview(parseInt(item.getAttribute('data-activity-index'), 10));
             });
+        });
+    }
+
+    /**
+     * Ask the teacher to confirm, then remove one activity from the set.
+     *
+     * @param {Number} idx Zero based index of the activity to remove.
+     * @return {void}
+     */
+    function confirmDeleteActivity(idx) {
+        var act = activities[idx];
+        if (!act) {
+            return;
+        }
+
+        if (activities.length <= 1) {
+            notifyError(str('error_delete_last',
+                'This is the only activity left. Generate more before removing it.'));
+            return;
+        }
+
+        Notification.confirm(
+            str('js_delete_title', 'Remove this activity?'),
+            strWithParam('js_delete_message', act.title),
+            str('js_delete_confirm', 'Remove'),
+            str('js_delete_cancel', 'Keep it'),
+            function() {
+                deleteActivity(idx);
+            }
+        );
+    }
+
+    /**
+     * Remove one activity, then offer to put it back.
+     *
+     * @param {Number} idx Zero based index of the activity to remove.
+     * @return {void}
+     */
+    function deleteActivity(idx) {
+        var act = activities[idx];
+        if (!act || deleteInFlight) {
+            return;
+        }
+
+        var removedTitle = act.title || '';
+        deleteInFlight = true;
+        setDeleteControlsBusy(true);
+
+        ajaxCall('deleteactivity', {
+            activityindex: idx,
+            // Sent so the server can refuse a request that was prepared against
+            // a different version of the list, rather than removing whatever now
+            // happens to sit at this position.
+            expectedcount: activities.length,
+            expectedtype: act.type || '',
+            expectedtitle: removedTitle
+        }, function(result) {
+            deleteInFlight = false;
+            setDeleteControlsBusy(false);
+
+            if (!result || !result.ok) {
+                notifyError((result && result.error) ||
+                    str('js_err_deletefailed', 'The activity could not be removed.'));
+                return;
+            }
+
+            activities = result.activities;
+            refreshActivityList();
+            showUndoDelete(idx, result.removed, removedTitle);
+        });
+    }
+
+    /**
+     * Disable or re-enable the remove controls while a request is in flight.
+     *
+     * @param {Boolean} busy Whether a removal is in progress.
+     * @return {void}
+     */
+    function setDeleteControlsBusy(busy) {
+        var btns = document.querySelectorAll('#ala-activities-preview .ala-preview-delete');
+        Array.prototype.forEach.call(btns, function(btn) {
+            btn.setAttribute('aria-disabled', busy ? 'true' : 'false');
+            btn.classList.toggle('ala-is-busy', !!busy);
+            if (busy) {
+                btn.removeAttribute('tabindex');
+            } else {
+                btn.setAttribute('tabindex', '0');
+            }
+        });
+    }
+
+    /**
+     * Show the undo bar for a few seconds after a removal.
+     *
+     * @param {Number} idx The position the activity was removed from.
+     * @param {Object} removed The activity data, to send back on undo.
+     * @param {String} title The activity title, for the message.
+     * @return {void}
+     */
+    function showUndoDelete(idx, removed, title) {
+        var previewEl = document.getElementById('ala-activities-preview');
+        if (!previewEl) {
+            return;
+        }
+
+        clearUndoDelete();
+
+        var bar = document.createElement('div');
+        bar.id = 'ala-undo-delete';
+        bar.className = 'ala-undo-bar';
+
+        // The message is the live region; the button sits outside it, because a
+        // control inside a live region is announced as part of the status text.
+        var message = document.createElement('span');
+        message.className = 'ala-undo-text';
+        message.setAttribute('role', 'status');
+        message.setAttribute('aria-live', 'polite');
+        message.textContent = strWithParam('js_deleted_notice', title);
+
+        var undoBtn = document.createElement('button');
+        undoBtn.type = 'button';
+        undoBtn.className = 'ala-link-btn ala-undo-btn';
+        undoBtn.textContent = str('js_delete_undo', 'Undo');
+        undoBtn.addEventListener('click', function() {
+            if (undoTimer) {
+                clearTimeout(undoTimer);
+                undoTimer = null;
+            }
+            undoBtn.disabled = true;
+            restoreActivity(idx, removed, bar);
+        });
+
+        bar.appendChild(message);
+        bar.appendChild(undoBtn);
+        previewEl.parentNode.insertBefore(bar, previewEl);
+
+        // The row that had focus has just been replaced, so send focus somewhere
+        // useful rather than letting it fall to the top of the page.
+        undoBtn.focus();
+
+        undoTimer = setTimeout(clearUndoDelete, UNDO_WINDOW_MS);
+    }
+
+    /**
+     * Remove the undo bar and cancel its timer.
+     *
+     * @return {void}
+     */
+    function clearUndoDelete() {
+        if (undoTimer) {
+            clearTimeout(undoTimer);
+            undoTimer = null;
+        }
+        var bar = document.getElementById('ala-undo-delete');
+        if (bar && bar.parentNode) {
+            bar.parentNode.removeChild(bar);
+        }
+    }
+
+    /**
+     * Put a removed activity back where it came from.
+     *
+     * @param {Number} idx The position to restore it to.
+     * @param {Object} removed The activity data returned by the removal.
+     * @param {Element} bar The undo bar, kept on screen until the restore succeeds.
+     * @return {void}
+     */
+    function restoreActivity(idx, removed, bar) {
+        ajaxCall('restoreactivity', {
+            activityindex: idx,
+            expectedcount: activities.length,
+            activityjson: JSON.stringify(removed)
+        }, function(result) {
+            if (!result || !result.ok) {
+                // The activity only exists in this closure, so the offer has to
+                // stay on screen for the teacher to try again.
+                var retry = bar ? bar.querySelector('.ala-undo-btn') : null;
+                if (retry) {
+                    retry.disabled = false;
+                }
+                notifyError((result && result.error) ||
+                    str('js_err_restorefailed', 'The activity could not be put back.'));
+                return;
+            }
+
+            clearUndoDelete();
+            activities = result.activities;
+            refreshActivityList();
         });
     }
 
@@ -4159,6 +4390,9 @@ define(['core/notification'], function(Notification) {
      * @return {void}
      */
     function openTeacherPreview(index) {
+        // The undo bar lives in the section about to be hidden, so take the
+        // offer away rather than letting it expire where nobody can see it.
+        clearUndoDelete();
         isPreviewMode = true;
         currentIndex = index;
         progress = {};
@@ -4736,6 +4970,7 @@ define(['core/notification'], function(Notification) {
                     }
                 }
                 syncJobLevelPills();
+                clearUndoDelete();
                 var formSection = document.getElementById('ala-form-section');
                 var manageSection = document.getElementById('ala-manage-section');
                 if (formSection) {

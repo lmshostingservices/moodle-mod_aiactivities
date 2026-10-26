@@ -393,7 +393,11 @@ function aiactivities_get_js_teacher_string_keys(): array {
         'js_err_gentimeout', 'js_err_noaudioactivities', 'js_err_pollfailed', 'js_err_savefailed',
         'js_err_savegenerated', 'js_generate_btn', 'js_preview_activity', 'js_preview_complete',
         'js_preview_heading', 'js_role_remove', 'js_sector_placeholder', 'error_no_content',
+        'error_delete_last',
         'generate_success', 'generating', 'js_types_none', 'js_types_notapplied',
+        'js_delete_cancel', 'js_delete_confirm', 'js_delete_message',
+        'js_delete_named', 'js_delete_title', 'js_delete_undo', 'js_deleted_notice',
+        'js_err_deletefailed', 'js_err_restorefailed',
     ];
     return array_merge($keys, $extrakeys);
 }
@@ -421,8 +425,11 @@ function aiactivities_get_js_string_map(): array {
         'flashcard_front', 'flashcard_tap', 'generate_success', 'generating', 'incorrect',
         'next_btn', 'next_card_btn', 'truefalse_activity_complete', 'truefalse_answer',
         'truefalse_false', 'truefalse_true',
+        'error_delete_last',
         'js_a11y_blank', 'js_a11y_placeincategory', 'js_a11y_placeincolumn', 'js_activities_ready',
         'js_audio_generating', 'js_audio_regenerate', 'js_audio_regenerated', 'js_credits_unit',
+        'js_delete_cancel', 'js_delete_confirm', 'js_delete_message',
+        'js_delete_named', 'js_delete_title', 'js_delete_undo', 'js_deleted_notice',
         'js_dialog_title', 'js_edit_activity', 'js_edit_belongsto', 'js_edit_blank', 'js_edit_cancel',
         'js_edit_card', 'js_edit_category', 'js_edit_correctanswer', 'js_edit_heading', 'js_edit_item',
         'js_edit_lbl_blankanswers', 'js_edit_lbl_cards', 'js_edit_lbl_categories', 'js_edit_lbl_colaname',
@@ -431,7 +438,8 @@ function aiactivities_get_js_string_map(): array {
         'js_edit_lbl_title', 'js_edit_pair', 'js_edit_ph_back', 'js_edit_ph_description',
         'js_edit_ph_explanation', 'js_edit_ph_front', 'js_edit_ph_label', 'js_edit_ph_left',
         'js_edit_ph_right', 'js_edit_ph_statement', 'js_edit_save', 'js_edit_saving', 'js_edit_statement',
-        'js_edit_step', 'js_err_audiofailed', 'js_err_genfailed', 'js_err_genstart', 'js_err_gentimeout',
+        'js_edit_step', 'js_err_audiofailed', 'js_err_deletefailed', 'js_err_genfailed',
+        'js_err_genstart', 'js_err_gentimeout', 'js_err_restorefailed',
         'js_err_http', 'js_err_noaudioactivities', 'js_err_parse', 'js_err_pollfailed', 'js_err_savefailed',
         'js_err_savegenerated', 'js_err_saveprogress', 'js_err_unknown', 'js_err_unknowntype',
         'js_eta_activities', 'js_eta_hour', 'js_eta_hours', 'js_eta_hr', 'js_eta_hrs', 'js_eta_label',

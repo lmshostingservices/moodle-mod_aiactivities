@@ -48,7 +48,7 @@ require_capability('mod/aiactivities:view', $context);
 
 // Actions that change generated content and are limited to users who may create it.
 $createactions = ['generate', 'generate_async', 'poll_job', 'save_generated', 'savevoicesettings',
-    'regenerateaudio', 'saveactivity', 'getcredits'];
+    'regenerateaudio', 'saveactivity', 'deleteactivity', 'restoreactivity', 'getcredits'];
 if (in_array($action, $createactions, true)) {
     require_capability('mod/aiactivities:create', $context);
 }
@@ -318,6 +318,148 @@ switch ($action) {
         echo json_encode(['ok' => true]);
         break;
 
+    case 'deleteactivity':
+        // Removes one activity from the set. Saved student progress is realigned
+        // so recorded answers stay attached to the activity they belong to.
+        $activityindex = required_param('activityindex', PARAM_INT);
+        $expectedcount = required_param('expectedcount', PARAM_INT);
+        $expectedtype = optional_param('expectedtype', '', PARAM_TEXT);
+        $expectedtitle = optional_param('expectedtitle', '', PARAM_TEXT);
+
+        $allactivities = json_decode(\mod_aiactivities\manifest_storage::decompress($instance->activitiesjson), true);
+        if (!is_array($allactivities) || !$allactivities) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_no_activities', 'mod_aiactivities')]);
+            break;
+        }
+
+        if ($activityindex < 0 || $activityindex >= count($allactivities)) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_invalid_index', 'mod_aiactivities')]);
+            break;
+        }
+
+        // Activities are addressed by position, so a request prepared against a
+        // different version of the list must not be applied to this one.
+        $matches = \mod_aiactivities\local\manifest_edit::still_matches(
+            $allactivities,
+            $expectedcount,
+            $activityindex,
+            $expectedtype,
+            $expectedtitle
+        );
+        if (!$matches) {
+            echo json_encode([
+                'ok' => false,
+                'error' => get_string('error_list_changed', 'mod_aiactivities'),
+                'listchanged' => true,
+            ]);
+            break;
+        }
+
+        if (count($allactivities) === 1) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_delete_last', 'mod_aiactivities')]);
+            break;
+        }
+
+        $removed = $allactivities[$activityindex];
+        array_splice($allactivities, $activityindex, 1);
+
+        $encoded = json_encode($allactivities);
+        if ($encoded === false) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_invalid_activities', 'mod_aiactivities')]);
+            break;
+        }
+
+        // The manifest and the attempts have to move together, or a failure part
+        // way through would leave the set shorter than the progress recorded against it.
+        $transaction = $DB->start_delegated_transaction();
+
+        $update = new stdClass();
+        $update->id = $instance->id;
+        $update->activitiesjson = \mod_aiactivities\manifest_storage::compress($encoded);
+        $update->timemodified = time();
+        $DB->update_record('aiactivities', $update);
+
+        $attempts = \mod_aiactivities\local\attempt_progress::shift_after_removal(
+            $instance->id,
+            $activityindex,
+            count($allactivities)
+        );
+
+        $transaction->allow_commit();
+
+        echo json_encode([
+            'ok' => true,
+            'removed' => $removed,
+            'activities' => $allactivities,
+            'attemptsupdated' => $attempts,
+        ]);
+        break;
+
+    case 'restoreactivity':
+        // Puts a removed activity back where it was. This is the undo of
+        // deleteactivity and is only ever sent with an activity that came from it.
+        $activityindex = required_param('activityindex', PARAM_INT);
+        $expectedcount = required_param('expectedcount', PARAM_INT);
+        // phpcs:ignore moodle.Commenting.InlineComment.NotCapital -- Verbatim pipeline annotation.
+        $json = required_param('activityjson', PARAM_RAW); // pipeline-ignore: PARAM_RAW — JSON, validated below.
+        $restored = json_decode($json, true);
+
+        if (!\mod_aiactivities\local\manifest_edit::is_storable($restored)) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_invalid_activities', 'mod_aiactivities')]);
+            break;
+        }
+
+        $allactivities = json_decode(\mod_aiactivities\manifest_storage::decompress($instance->activitiesjson), true);
+        if (!is_array($allactivities)) {
+            $allactivities = [];
+        }
+
+        if (count($allactivities) >= \mod_aiactivities\local\manifest_edit::MAX_ACTIVITIES) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_too_many_activities', 'mod_aiactivities')]);
+            break;
+        }
+
+        if ($activityindex < 0 || $activityindex > count($allactivities)) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_invalid_index', 'mod_aiactivities')]);
+            break;
+        }
+
+        if (!\mod_aiactivities\local\manifest_edit::still_has_count($allactivities, $expectedcount)) {
+            echo json_encode([
+                'ok' => false,
+                'error' => get_string('error_list_changed', 'mod_aiactivities'),
+                'listchanged' => true,
+            ]);
+            break;
+        }
+
+        array_splice($allactivities, $activityindex, 0, [$restored]);
+
+        $encoded = json_encode($allactivities);
+        if ($encoded === false) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_invalid_activities', 'mod_aiactivities')]);
+            break;
+        }
+
+        $transaction = $DB->start_delegated_transaction();
+
+        $update = new stdClass();
+        $update->id = $instance->id;
+        $update->activitiesjson = \mod_aiactivities\manifest_storage::compress($encoded);
+        $update->timemodified = time();
+        $DB->update_record('aiactivities', $update);
+
+        $attempts = \mod_aiactivities\local\attempt_progress::shift_after_insertion(
+            $instance->id,
+            $activityindex,
+            count($allactivities)
+        );
+
+        $transaction->allow_commit();
+
+        echo json_encode(['ok' => true, 'activities' => $allactivities, 'attemptsupdated' => $attempts]);
+        break;
+
     case 'startattempt':
         $completedconditions = [
             'aiactivitiesid' => $instance->id,
@@ -389,7 +531,10 @@ switch ($action) {
         $currentactivity = required_param('currentactivity', PARAM_INT);
         // phpcs:ignore moodle.Commenting.InlineComment.NotCapital -- Verbatim pipeline annotation.
         $progressjson = required_param('progressjson', PARAM_RAW); // pipeline-ignore: PARAM_RAW — JSON, validated.
+        // The client sends its own tally, but the count is recomputed below from
+        // the progress it actually saved, so the two can never drift apart.
         $completedcount = required_param('completedcount', PARAM_INT);
+        unset($completedcount);
 
         $attempt = $DB->get_record(
             'aiactivities_attempts',
@@ -407,14 +552,40 @@ switch ($action) {
             break;
         }
 
-        $attempt->currentactivity = aiactivities_clamp_index($currentactivity, (int)$attempt->totalcount);
-        $attempt->progressjson = json_encode($progress);
-        $attempt->completedcount = aiactivities_clamp_index($completedcount, (int)$attempt->totalcount);
+        // A page opened before the set was edited still holds the old positions.
+        // Bounding the saved progress to the set as it stands now keeps a stale
+        // page from reporting answers for activities that no longer exist.
+        $storedactivities = json_decode(
+            \mod_aiactivities\manifest_storage::decompress($instance->activitiesjson),
+            true
+        );
+        $total = is_array($storedactivities) ? count($storedactivities) : (int)$attempt->totalcount;
+
+        $bounded = [];
+        foreach ($progress as $position => $done) {
+            $position = (int)$position;
+            if ($position >= 0 && $position < $total) {
+                $bounded[$position] = $done;
+            }
+        }
+        ksort($bounded);
+
+        $completed = 0;
+        foreach ($bounded as $done) {
+            if ($done === true) {
+                $completed++;
+            }
+        }
+
+        $attempt->totalcount = $total;
+        $attempt->currentactivity = aiactivities_clamp_index($currentactivity, $total);
+        $attempt->progressjson = json_encode((object)$bounded);
+        $attempt->completedcount = min($completed, $total);
         $attempt->timemodified = time();
 
         $DB->update_record('aiactivities_attempts', $attempt);
 
-        echo json_encode(['ok' => true]);
+        echo json_encode(['ok' => true, 'totalcount' => $total]);
         break;
 
     case 'complete':
