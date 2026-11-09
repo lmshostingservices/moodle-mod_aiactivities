@@ -2,6 +2,18 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.11.2] - 2026-11-09
+
+### Added
+- AI Course Builder adapter (`classes/aicoursebuilder/generator.php`). AI Course Builder can now
+  create and fill a Learning Activities set for each lesson it builds, using the same generation
+  service and the same stored format as the teacher flow (all activity types, no narration).
+
+### Fixed
+- The completion sort order now lists the core conditions (view, receive a grade, passing grade)
+  as well as "all correct". Core includes those in the list it sorts, so an activity with view or
+  grade completion turned on no longer throws on the activity page.
+
 ## [1.11.1] - 2026-10-26
 
 ### Fixed

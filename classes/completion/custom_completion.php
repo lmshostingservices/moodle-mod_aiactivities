@@ -83,6 +83,9 @@ class custom_completion extends activity_custom_completion {
      * @return string[] The rule names in display order.
      */
     public function get_sort_order(): array {
-        return ['completionallcorrect'];
+        // Core lists every condition shown on the activity, not only the custom
+        // ones; leaving the core ones out makes the activity page throw when a
+        // teacher also enables view or grade completion.
+        return ['completionview', 'completionusegrade', 'completionpassgrade', 'completionallcorrect'];
     }
 }
