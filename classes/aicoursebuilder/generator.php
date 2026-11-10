@@ -29,7 +29,22 @@ class generator {
     private const ACTIVITY_COUNT = 5;
 
     public static function native_estimate(array $brief): int {
-        return self::ACTIVITY_COUNT * 2;
+        return self::activity_count($brief) * 2;
+    }
+
+    /**
+     * How many activities fit the lesson: about one for every 12 minutes of the session,
+     * between 3 and 8. Five when the session length is unknown.
+     *
+     * @param array $brief
+     * @return int
+     */
+    public static function activity_count(array $brief): int {
+        $minutes = (int)(($brief['lesson'] ?? [])['minutes'] ?? 0);
+        if ($minutes <= 0) {
+            return self::ACTIVITY_COUNT;
+        }
+        return max(3, min(8, (int)round($minutes / 12)));
     }
 
     public static function native_generate(int $cmid, array $brief): string {
@@ -49,7 +64,9 @@ class generator {
             'apiKey' => $apikey,
             'content' => substr($content, 0, 50000),
             'language' => clean_param((string)($program['language'] ?? 'en-AU'), PARAM_TEXT),
-            'activityCount' => self::ACTIVITY_COUNT,
+            'activityCount' => self::activity_count($brief),
+            // Session length, for the service's activity-duration guidance.
+            'sessionMinutes' => (int)(($brief['lesson'] ?? [])['minutes'] ?? 0),
             'route' => ($program['framework'] ?? 'vet') === 'vet' ? 'vet' : 'general',
             'voiceoverEnabled' => false,
         ];

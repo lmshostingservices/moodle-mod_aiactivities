@@ -2,6 +2,9 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.11.3] - 2026-11-10
+- AI Course Builder sizes Learning Activities to the lesson: about one activity for every 12 minutes of the session, between 3 and 8 (5 when the session length is unknown). The price follows (2 credits each), and the session length is sent to the service as `sessionMinutes`.
+
 ## [1.11.2] - 2026-11-09
 
 ### Added
