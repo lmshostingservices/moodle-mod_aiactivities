@@ -4577,7 +4577,7 @@ define(['core/notification'], function(Notification) {
         // Fetch credits
         ajaxCall('getcredits', {}, function(result) {
             var creditsEl = document.getElementById('ala-credits-value');
-            if (creditsEl && result.ok) {
+            if (creditsEl && result.ok && result.credits !== null) {
                 creditsEl.textContent = result.credits;
             }
         });
@@ -4595,13 +4595,17 @@ define(['core/notification'], function(Notification) {
         function updateAlaCost() {
             var count = activityCountEl ? parseInt(activityCountEl.value, 10) || 5 : 5;
             var voOn = voiceoverToggleEl && voiceoverToggleEl.checked;
-            var rate = voOn ? 3 : 2;
+            // Bring your own AI: work on the site's own AI uses no LMS Labs credits. A set the site's own
+            // AI writes is narrated free of credits whichever voice reads it.
+            var ownAi = (CONFIG && CONFIG.ownai) || {};
+            var rate = (ownAi.text ? 0 : 2) + (voOn && !ownAi.text && !ownAi.voice ? 1 : 0);
             var creditsUnit = str('js_credits_unit', 'credits');
+            var free = str('js_byok_nocredits', 'No LMS Labs credits');
             if (costPerActEl) {
-                costPerActEl.textContent = rate + ' ' + creditsUnit;
+                costPerActEl.textContent = rate === 0 ? free : rate + ' ' + creditsUnit;
             }
             if (totalCostEl) {
-                totalCostEl.textContent = (count * rate) + ' ' + creditsUnit;
+                totalCostEl.textContent = rate === 0 ? free : (count * rate) + ' ' + creditsUnit;
             }
         }
         if (activityCountEl) {

@@ -37,10 +37,22 @@ $string['pluginadministration'] = 'AI Learning Activities administration';
 $string['pluginname'] = 'AI Learning Activities';
 
 $string['activityname'] = 'Activity name';
+$string['byok_badge'] = 'Your own AI';
+$string['byok_badge_text'] = 'Activities';
+$string['byok_badge_textvoice'] = 'Activities and narration';
+$string['byok_badge_title'] = 'This site brings its own AI: this work runs on the site\'s AI provider and uses no LMS Labs credits.';
+$string['byok_badge_voice'] = 'Narration';
+$string['byok_failed'] = 'Your own AI provider could not write the activities ({$a}). No LMS Labs credits were used.';
+$string['byok_unavailable'] = 'Your own AI is not available just now. Ask your site administrator to check Bring your own AI in AI Connect.';
+$string['byok_voice_note'] = '(no LMS Labs credits)';
+$string['cachedef_byokjobs'] = 'Activity generations running on the site\'s own AI (Bring your own AI)';
+$string['js_byok_nocredits'] = 'No LMS Labs credits';
 $string['noinstances'] = 'There are no AI Learning Activities in this course.';
 
 $string['apiurl'] = 'API URL';
 $string['apiurl_desc'] = 'The base URL of the AI Grader generation service. Leave the default unless you have been given a different endpoint.';
+$string['privacy:metadata:byok_aiprovider'] = 'When the site brings its own AI, the learning content and generation settings are sent to the AI provider the site administrator chose (a Moodle AI provider or the site\'s own key), not to LMS Labs.';
+$string['privacy:metadata:byok_aiprovider:content'] = 'The learning content the teacher entered, and the language, scenario and narration settings.';
 $string['siteid'] = 'Site ID';
 $string['siteid_desc'] = 'Your Moodle site identifier for the AI Grader service.';
 $string['apikey'] = 'API Key';

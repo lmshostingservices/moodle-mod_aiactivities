@@ -31,6 +31,7 @@
     Example context (json):
     {
         "hasactivities": false,
+        "ownai": {"any": true, "text": true, "voice": false, "freevoice": true, "label": "Activities"},
         "voiceoverenabled": false,
         "languages": [{"label": "English", "options": [{"value": "en-AU", "label": "English (Australian)", "selected": true}]}],
         "activitycounts": [{"value": 8, "label": "8 activities", "selected": true}],
@@ -40,6 +41,14 @@
     }
 }}
 <div id="ala-app" class="ala-container">
+    {{#ownai.any}}
+    <div class="ala-byok-badge" title="{{#str}}byok_badge_title, mod_aiactivities{{/str}}">
+        <i class="fa fa-microchip" aria-hidden="true"></i>
+        <span class="ala-byok-badge-label">{{#str}}byok_badge, mod_aiactivities{{/str}}</span>
+        <span class="ala-byok-badge-detail">{{ownai.label}}</span>
+    </div>
+    {{/ownai.any}}
+    {{^ownai.text}}
     <div class="ala-credits-badge">
         <svg class="ala-credits-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
             <circle cx="12" cy="12" r="10"/>
@@ -49,6 +58,7 @@
         <span id="ala-credits-value">--</span>
         <span class="ala-credits-label">{{#str}}credits_label, mod_aiactivities{{/str}}</span>
     </div>
+    {{/ownai.text}}
 
     <div id="ala-form-section" class="ala-card" {{#hasactivities}}style="display:none;"{{/hasactivities}}>
         <h3 class="ala-card-title">
@@ -156,7 +166,7 @@
                     <label class="ala-toggle-label">
                         <input type="checkbox" id="ala-voiceover-toggle" class="ala-toggle-checkbox">
                         <span class="ala-toggle-switch"></span>
-                        <span class="ala-toggle-text">{{#str}}voiceover_toggle, mod_aiactivities{{/str}} <small>{{#str}}voiceover_credit_note, mod_aiactivities{{/str}}</small></span>
+                        <span class="ala-toggle-text">{{#str}}voiceover_toggle, mod_aiactivities{{/str}} <small>{{#ownai.freevoice}}{{#str}}byok_voice_note, mod_aiactivities{{/str}}{{/ownai.freevoice}}{{^ownai.freevoice}}{{#str}}voiceover_credit_note, mod_aiactivities{{/str}}{{/ownai.freevoice}}</small></span>
                     </label>
                     <small class="ala-help">{{#str}}voiceover_help, mod_aiactivities{{/str}}</small>
                 </div>

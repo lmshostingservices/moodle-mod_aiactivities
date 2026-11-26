@@ -50,7 +50,8 @@ class generator {
     public static function native_generate(int $cmid, array $brief): string {
         self::load_native_helpers();
         [$siteid, $apikey] = \aiactivities_get_credentials();
-        if ($siteid === '' || $apikey === '') {
+        $ownai = \mod_aiactivities\byok::uses('text');
+        if (!$ownai && ($siteid === '' || $apikey === '')) {
             throw new \moodle_exception('not_configured', 'mod_aiactivities');
         }
         $lesson = is_array($brief['lesson'] ?? null) ? $brief['lesson'] : [];
@@ -65,11 +66,21 @@ class generator {
             'content' => substr($content, 0, 50000),
             'language' => clean_param((string)($program['language'] ?? 'en-AU'), PARAM_TEXT),
             'activityCount' => self::activity_count($brief),
-            // Session length, for the service's activity-duration guidance.
-            'sessionMinutes' => (int)(($brief['lesson'] ?? [])['minutes'] ?? 0),
             'route' => ($program['framework'] ?? 'vet') === 'vet' ? 'vet' : 'general',
             'voiceoverEnabled' => false,
         ];
+        // Session length, for the service's activity-duration guidance. Only sent when known: the service
+        // refuses a length below one minute, which failed every lesson without one.
+        $minutes = (int)(($brief['lesson'] ?? [])['minutes'] ?? 0);
+        if ($minutes > 0) {
+            $payload['sessionMinutes'] = min(1440, $minutes);
+        }
+        if ($ownai) {
+            // Written on the site's own AI (Bring your own AI) by a background task.
+            $cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
+            $started = \mod_aiactivities\byok::start($payload, \context_module::instance($cm->id));
+            return clean_param((string)$started['jobId'], PARAM_ALPHANUMEXT);
+        }
         $curl = new \curl();
         $curl->setopt([
             'CURLOPT_TIMEOUT' => 30,
@@ -102,10 +113,24 @@ class generator {
             'CURLOPT_SSL_VERIFYHOST' => 2,
             'CURLOPT_FOLLOWLOCATION' => false,
         ]);
-        $url = \aiactivities_get_api_base() . '/api/jobs/' . rawurlencode($jobid);
-        $response = $curl->get($url);
-        $payload = json_decode((string)$response, true);
-        if ($curl->get_errno() || (int)($curl->get_info()['http_code'] ?? 0) !== 200 || !is_array($payload)) {
+        if (\mod_aiactivities\byok::is_job($jobid)) {
+            $cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
+            $payload = \mod_aiactivities\byok::poll($jobid, \context_module::instance($cm->id));
+            if (empty($payload['ok'])) {
+                return ['status' => 'failed', 'retryable' => false,
+                    'error' => clean_param((string)($payload['error'] ?? 'Generation failed.'), PARAM_TEXT)];
+            }
+            if (($payload['status'] ?? '') === 'done' && empty($payload['result']['ok'])) {
+                return ['status' => 'failed', 'retryable' => false,
+                    'error' => clean_param((string)($payload['result']['error'] ?? 'Generation failed.'), PARAM_TEXT)];
+            }
+            $unavailable = false;
+        } else {
+            $url = \aiactivities_get_api_base() . '/api/jobs/' . rawurlencode($jobid);
+            $payload = json_decode((string)$curl->get($url), true);
+            $unavailable = $curl->get_errno() || (int)($curl->get_info()['http_code'] ?? 0) !== 200 || !is_array($payload);
+        }
+        if ($unavailable) {
             return ['status' => 'blocked', 'retryable' => false, 'error' => 'Learning Activities job status is unavailable.'];
         }
         if (($payload['status'] ?? '') === 'error') {
