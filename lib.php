@@ -389,7 +389,7 @@ function aiactivities_get_js_teacher_string_keys(): array {
     }
 
     $extrakeys = [
-        'js_activities_ready', 'js_credits_unit', 'js_err_genfailed', 'js_err_genstart',
+        'js_activities_ready', 'js_byok_nocredits', 'js_credits_unit', 'js_err_genfailed', 'js_err_genstart',
         'js_err_gentimeout', 'js_err_noaudioactivities', 'js_err_pollfailed', 'js_err_savefailed',
         'js_err_savegenerated', 'js_generate_btn', 'js_preview_activity', 'js_preview_complete',
         'js_preview_heading', 'js_role_remove', 'js_sector_placeholder', 'error_no_content',
@@ -427,7 +427,7 @@ function aiactivities_get_js_string_map(): array {
         'truefalse_false', 'truefalse_true',
         'error_delete_last',
         'js_a11y_blank', 'js_a11y_placeincategory', 'js_a11y_placeincolumn', 'js_activities_ready',
-        'js_audio_generating', 'js_audio_regenerate', 'js_audio_regenerated', 'js_credits_unit',
+        'js_audio_generating', 'js_audio_regenerate', 'js_audio_regenerated', 'js_byok_nocredits', 'js_credits_unit',
         'js_delete_cancel', 'js_delete_confirm', 'js_delete_message',
         'js_delete_named', 'js_delete_title', 'js_delete_undo', 'js_deleted_notice',
         'js_dialog_title', 'js_edit_activity', 'js_edit_belongsto', 'js_edit_blank', 'js_edit_cancel',

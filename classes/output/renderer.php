@@ -86,9 +86,34 @@ class renderer extends plugin_renderer_base {
             'activitytypes' => $this->activity_type_options(
                 $instance->activitytypes ?? \mod_aiactivities\local\activity_types::ALL
             ),
+            'ownai' => $this->own_ai(),
         ];
 
         return $this->render_from_template('mod_aiactivities/teacher_interface', $context);
+    }
+
+    /**
+     * What runs on the site's own AI (Bring your own AI), for the badge and the cost notes.
+     *
+     * @return array any, text, voice, freevoice (narration costs no LMS Labs credits) and the badge label.
+     */
+    private function own_ai(): array {
+        $state = \mod_aiactivities\byok::state();
+        if ($state['text'] && $state['voice']) {
+            $label = get_string('byok_badge_textvoice', 'mod_aiactivities');
+        } else if ($state['text']) {
+            $label = get_string('byok_badge_text', 'mod_aiactivities');
+        } else {
+            $label = get_string('byok_badge_voice', 'mod_aiactivities');
+        }
+        return [
+            'any' => $state['text'] || $state['voice'],
+            'text' => $state['text'],
+            'voice' => $state['voice'],
+            // Narration of a set the site's own AI wrote uses the service's free narration route.
+            'freevoice' => $state['text'] || $state['voice'],
+            'label' => $label,
+        ];
     }
 
     /**

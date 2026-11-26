@@ -2,6 +2,23 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.12.0] - 2026-11-26
+
+### Added
+- Bring your own AI. When the site administrator turns it on in AI Connect (a yearly Bring your own AI
+  licence), activities are written, and optionally narrated, on the site's own AI provider instead of
+  LMS Labs credits. The LMS Labs generation and narration routes run inside Moodle (`classes/local/byok/engine.php`),
+  with the same prompts, request checks and answer checks, so the activities match. Writing runs as a
+  background task polled like the service's jobs. Writing and narration are set separately: a site can
+  write on its own AI and narrate with LMS Labs, or the reverse (LMS Labs then writes without narration
+  and charges no narration credits). AI Course Builder lessons use the site's own AI too.
+- A "Your own AI" badge on the generation page, and the cost summary shows "No LMS Labs credits" for
+  work on the site's own AI. LMS Labs credentials are not needed when the writing is on the site's own AI.
+
+### Fixed
+- AI Course Builder no longer sends a session length of 0 minutes for lessons without one. The service
+  refuses it, so those lessons failed to generate; the length is now only sent when it is known.
+
 ## [1.11.3] - 2026-11-10
 - AI Course Builder sizes Learning Activities to the lesson: about one activity for every 12 minutes of the session, between 3 and 8 (5 when the session length is unknown). The price follows (2 credits each), and the session length is sent to the service as `sessionMinutes`.
 

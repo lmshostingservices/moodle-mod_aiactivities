@@ -62,6 +62,9 @@ $apibase = aiactivities_get_api_base();
 
 header('Content-Type: application/json');
 
+// Bring your own AI: which work runs on the site's own AI instead of LMS Labs credits.
+$ownai = \mod_aiactivities\byok::state();
+
 /**
  * Returns a configured curl instance for talking to the generation service.
  *
@@ -84,6 +87,11 @@ function aiactivities_api_curl(int $timeout): \curl {
 switch ($action) {
     case 'getcredits':
         if ($siteid === '' || $apikey === '') {
+            if ($ownai['text']) {
+                // Writing runs on the site's own AI, so there is no LMS Labs balance to show.
+                echo json_encode(['ok' => true, 'credits' => null, 'ownAi' => $ownai]);
+                break;
+            }
             echo json_encode(['ok' => false, 'error' => get_string('not_configured', 'mod_aiactivities')]);
             break;
         }
@@ -112,7 +120,7 @@ switch ($action) {
 
         if ($httpcode === 200) {
             $result = json_decode($response, true);
-            echo json_encode(['ok' => true, 'credits' => $result['credits'] ?? 0]);
+            echo json_encode(['ok' => true, 'credits' => $result['credits'] ?? 0, 'ownAi' => $ownai]);
         } else {
             echo json_encode(['ok' => false, 'error' => get_string('error_credits_failed', 'mod_aiactivities')]);
         }
@@ -132,18 +140,30 @@ switch ($action) {
         $options = aiactivities_read_generation_options();
         $payload = aiactivities_build_generation_payload($siteid, $apikey, $content, $options);
 
-        $curl = aiactivities_api_curl(180);
-        $curl->setHeader(['Content-Type: application/json']);
-        $response = $curl->post($apibase . '/api/generate-aiactivities', json_encode($payload));
+        if ($ownai['text']) {
+            // Written on the site's own AI, in this request (the service's generate route, ported).
+            $result = \mod_aiactivities\byok::generate($payload);
+            $httpcode = 200;
+        } else {
+            [$payload, $narratehere] = \mod_aiactivities\byok::split_voice($payload);
+            $curl = aiactivities_api_curl(180);
+            $curl->setHeader(['Content-Type: application/json']);
+            $response = $curl->post($apibase . '/api/generate-aiactivities', json_encode($payload));
 
-        if ($curl->error) {
-            echo json_encode(['ok' => false, 'error' => get_string('error_connection', 'mod_aiactivities')]);
-            break;
+            if ($curl->error) {
+                echo json_encode(['ok' => false, 'error' => get_string('error_connection', 'mod_aiactivities')]);
+                break;
+            }
+
+            $result = json_decode($response, true);
+            $httpcode = (int)$curl->info['http_code'];
+            if ($narratehere && $httpcode === 200 && !empty($result['ok']) && !empty($result['activities'])) {
+                // Narration runs on the site's own voice.
+                $result['activities'] = \mod_aiactivities\byok::narrate($result['activities'], $payload);
+            }
         }
 
-        $result = json_decode($response, true);
-
-        if ((int)$curl->info['http_code'] === 200 && $result && !empty($result['ok']) && !empty($result['activities'])) {
+        if ($httpcode === 200 && $result && !empty($result['ok']) && !empty($result['activities'])) {
             [$activities, $typesapplied] = aiactivities_apply_type_filter($result['activities'], $options['activitytypes']);
             aiactivities_store_activities($instance->id, $activities, $content, $options);
             $success = [
@@ -179,6 +199,13 @@ switch ($action) {
         $options = aiactivities_read_generation_options();
         $payload = aiactivities_build_generation_payload($siteid, $apikey, $content, $options);
 
+        if ($ownai['text']) {
+            // Written on the site's own AI by a background task, polled like the service's jobs.
+            echo json_encode(\mod_aiactivities\byok::start($payload, $context) + ['async' => true]);
+            break;
+        }
+
+        [$payload, $narratehere] = \mod_aiactivities\byok::split_voice($payload);
         $curl = aiactivities_api_curl(15);
         $curl->setHeader(['Content-Type: application/json']);
         $response = json_decode($curl->post($apibase . '/api/generate-aiactivities/start', json_encode($payload)), true);
@@ -192,14 +219,32 @@ switch ($action) {
             break;
         }
 
+        if ($narratehere) {
+            // LMS Labs writes the set; it is narrated on the site's own voice when it comes back.
+            \mod_aiactivities\byok::narrate_later((string)$response['jobId'], $payload, $context);
+        }
         echo json_encode(['ok' => true, 'jobId' => $response['jobId'], 'async' => true]);
         break;
 
     case 'poll_job':
         $jobid = required_param('jobId', PARAM_ALPHANUMEXT);
 
+        if (\mod_aiactivities\byok::is_job($jobid)) {
+            echo json_encode(\mod_aiactivities\byok::poll($jobid, $context));
+            break;
+        }
+        $own = \mod_aiactivities\byok::poll($jobid, $context);
+        if ($own !== null) {
+            // A set LMS Labs wrote, now being narrated on the site's own voice.
+            echo json_encode($own);
+            break;
+        }
+
         $curl = aiactivities_api_curl(10);
         $response = json_decode($curl->get($apibase . '/api/jobs/' . urlencode($jobid)), true);
+        if (is_array($response) && \mod_aiactivities\byok::narrates($jobid)) {
+            $response = \mod_aiactivities\byok::poll($jobid, $context, $response) ?? $response;
+        }
 
         $fallback = [
             'ok' => false,
@@ -263,12 +308,19 @@ switch ($action) {
             'voiceId' => clean_param(optional_param('voiceid', 'Zephyr', PARAM_TEXT), PARAM_TEXT),
         ];
 
-        $curl = aiactivities_api_curl(180);
-        $curl->setHeader(['Content-Type: application/json']);
-        $response = $curl->post($apibase . '/api/aiactivities-regenerate-audio', json_encode($payload));
-        $result = json_decode($response, true);
+        // Narrated on the site's own voice when Bring your own AI covers voice, otherwise by LMS Labs.
+        $result = \mod_aiactivities\byok::regenerate_audio($payload);
+        if ($result !== null) {
+            $httpcode = 200;
+        } else {
+            $curl = aiactivities_api_curl(180);
+            $curl->setHeader(['Content-Type: application/json']);
+            $response = $curl->post($apibase . '/api/aiactivities-regenerate-audio', json_encode($payload));
+            $result = json_decode($response, true);
+            $httpcode = (int)$curl->info['http_code'];
+        }
 
-        if ((int)$curl->info['http_code'] === 200 && $result && !empty($result['ok']) && !empty($result['activities'])) {
+        if ($httpcode === 200 && $result && !empty($result['ok']) && !empty($result['activities'])) {
             $update = new stdClass();
             $update->id = $instance->id;
             $update->activitiesjson = \mod_aiactivities\manifest_storage::compress(json_encode($result['activities']));

@@ -69,6 +69,13 @@ class provider implements
         ];
         $collection->add_external_location_link('aiactivities_service', $servicefields, 'privacy:metadata:service');
 
+        // Bring your own AI: the same content goes to the AI provider the site administrator chose instead.
+        $collection->add_external_location_link(
+            'byok_aiprovider',
+            ['content' => 'privacy:metadata:byok_aiprovider:content'],
+            'privacy:metadata:byok_aiprovider'
+        );
+
         return $collection;
     }
 

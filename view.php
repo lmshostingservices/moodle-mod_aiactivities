@@ -68,7 +68,8 @@ aiactivities_view($instance, $course, $cm, $context);
 
 echo $OUTPUT->header();
 
-if ($siteid === '' || $apikey === '') {
+// With Bring your own AI covering the writing, LMS Labs credentials are not needed.
+if (($siteid === '' || $apikey === '') && !\mod_aiactivities\byok::uses('text')) {
     echo $OUTPUT->notification(get_string('not_configured', 'mod_aiactivities'), 'warning');
     echo $OUTPUT->footer();
     exit;
@@ -109,6 +110,7 @@ $config = [
     'voicegender' => $instance->voicegender ?? 'female',
     'voiceid' => $instance->voiceid ?? 'Zephyr',
     'voicelanguage' => $instance->language ?? 'en-AU',
+    'ownai' => \mod_aiactivities\byok::state(),
 ];
 
 // The configuration carries the language strings, the scenario vocabulary and the
