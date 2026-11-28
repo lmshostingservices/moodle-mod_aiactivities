@@ -1,4 +1,23 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <libraries>
-    <!-- This plugin bundles no third-party libraries. -->
+    <library>
+        <location>styles.css</location>
+        <name>Moodle Design System (tokens and component styles)</name>
+        <description>Design tokens and the Button, Link, Badge, Alert, Checkbox, Radio and Choicebox styles from @moodlehq/design-system, scoped to this plugin.</description>
+        <version>5.5.0</version>
+        <license>GPL</license>
+        <licenseversion>3.0</licenseversion>
+        <repository>https://github.com/moodlehq/design-system</repository>
+        <copyrights><copyright>Moodle Pty Ltd</copyright></copyrights>
+    </library>
+    <library>
+        <location>fonts</location>
+        <name>Noto Sans</name>
+        <description>Latin subset web fonts, weights 400 to 700, from Fontsource.</description>
+        <version>5.3.0</version>
+        <license>OFL</license>
+        <licenseversion>1.1</licenseversion>
+        <repository>https://github.com/notofonts/latin-greek-cyrillic</repository>
+        <copyrights><copyright>2022 The Noto Project Authors</copyright></copyrights>
+    </library>
 </libraries>

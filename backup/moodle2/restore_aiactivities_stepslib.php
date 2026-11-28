@@ -58,6 +58,14 @@ class restore_aiactivities_activity_structure_step extends restore_activity_stru
         $data->timecreated = $this->apply_date_offset($data->timecreated);
         $data->timemodified = $this->apply_date_offset($data->timemodified);
 
+        // Backups made before 1.13.0 hold sets that were already live, so they stay released.
+        if (!isset($data->reviewstatus)) {
+            $data->reviewstatus = 1;
+        }
+        $data->reviewedby = !empty($data->reviewedby) ? (int)$this->get_mappingid('user', $data->reviewedby, 0) : 0;
+        $data->timereviewed = !empty($data->timereviewed) ? $this->apply_date_offset($data->timereviewed) : 0;
+        $data->timegenerated = !empty($data->timegenerated) ? $this->apply_date_offset($data->timegenerated) : 0;
+
         if (!isset($data->activitycount)) {
             $data->activitycount = 5;
         }

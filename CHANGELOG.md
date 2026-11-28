@@ -2,6 +2,41 @@
 
 All notable changes to this plugin will be documented in this file.
 
+## [1.13.0] - 2026-11-28
+
+### Added: responsible AI (EU AI Act)
+- **Check before release** (on by default). A newly generated or regenerated set stays hidden from learners until a
+  teacher ticks that they have checked every question, answer and explanation, and releases it. Who released it, and
+  when, is recorded and shown. Sets that were live before this release stay live. AI Course Builder sets follow the
+  same rule.
+- **Learner AI notice** (on by default): "Made with AI", naming the teacher who checked the set, with an "About AI here"
+  explanation and an AI-voice note when the set is narrated (Article 50).
+- **Machine-readable AI marker** on every learner page: schema.org JSON-LD with the IPTC `trainedAlgorithmicMedia`
+  digital source type, plus `data-ai-*` attributes on the player (Article 50(2), ahead of 2 December 2026).
+- **Pause AI generation** switch for administrators. Stops generation and narration site-wide, including AI Course
+  Builder; released activities keep working.
+- **"Using AI responsibly"** panel for teachers on the generation form (Article 4).
+- Moodle log events: *Activities generated with AI*, *AI-generated activities released to learners* and *Activity
+  removed from a generated set* (this also closes the audit-trail gap noted in 1.11.0).
+- `docs/eu-ai-act.md`: classification, dates, provider and deployer duties, feature matrix and instructions for use.
+- Privacy API covers the teacher recorded as releasing a set (export, and delete without un-releasing the set).
+
+### Changed: Moodle Design System
+- The teacher and learner interfaces are rebuilt on the Moodle Design System (`@moodlehq/design-system` 5.5.0) with the
+  LMS Labs premium finish: Noto Sans, MDS colour, spacing, radius and shadow tokens, MDS Buttons, Badges, Alerts,
+  Checkbox and Progress bar, a 32 x 18 MDS Switch, Font Awesome icons, and Boost dark mode through the MDS tokens.
+  The indigo palette and glass effects are gone; every activity colour now comes from the MDS ramps.
+- The activity type picker is now visual cards with an icon and a one-line description for each type.
+- MDS tokens are scoped to the plugin's own containers, so the rest of the site is not restyled. Noto Sans is bundled
+  (SIL Open Font License); see `thirdpartylibs.xml`.
+
+### Fixed
+- AI Course Builder adapter: missing docblocks and licence tag (coding standard), and constants now declare their
+  visibility.
+
+### Supported
+- Moodle 4.4 to 5.3. Tested on 4.5, 5.2 and 5.3.
+
 ## [1.12.0] - 2026-11-26
 
 ### Added

@@ -29,14 +29,14 @@ namespace mod_aiactivities\local\byok;
  */
 class engine {
     /** JavaScript's whitespace, for String.prototype.trim(). */
-    const WS = '\x{0009}-\x{000D}\x{0020}\x{00A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}';
+    public const WS = '\x{0009}-\x{000D}\x{0020}\x{00A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}';
 
     /** The fixed activity order, cycled when more than eight are asked for. */
-    const ACTIVITY_TYPES = ['cardselect', 'columnsort', 'flashcards', 'matching', 'truefalseswipe', 'categorysort',
+    public const ACTIVITY_TYPES = ['cardselect', 'columnsort', 'flashcards', 'matching', 'truefalseswipe', 'categorysort',
         'fillinblank', 'ordering'];
 
     /** Language codes the service names in its prompts. */
-    const LANGUAGES = [
+    public const LANGUAGES = [
         'en-AU' => 'Australian English',
         'en-GB' => 'British English',
         'en-US' => 'American English',
@@ -885,7 +885,7 @@ SCENARIO WORKER LEVEL: Every character in the scenarios must be at the "' . self
     }
 
     /** Google voice language codes (getVoiceConfigWithId). */
-    const VOICE_LANGUAGES = [
+    public const VOICE_LANGUAGES = [
         'en-AU' => 'en-AU',
         'en-GB' => 'en-GB',
         'en-IN' => 'en-IN',

@@ -67,6 +67,34 @@ if ($hassiteconfig) {
         ''
     ));
 
+    // Responsible AI (EU AI Act). Defaults favour transparency and human oversight.
+    $settings->add(new admin_setting_heading(
+        'mod_aiactivities/responsibleai_heading',
+        get_string('responsibleai_heading', 'mod_aiactivities'),
+        get_string('responsibleai_heading_desc', 'mod_aiactivities')
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'mod_aiactivities/requirereview',
+        get_string('requirereview', 'mod_aiactivities'),
+        get_string('requirereview_desc', 'mod_aiactivities'),
+        1
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'mod_aiactivities/learnernotice',
+        get_string('learnernotice', 'mod_aiactivities'),
+        get_string('learnernotice_desc', 'mod_aiactivities'),
+        1
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'mod_aiactivities/aipaused',
+        get_string('aipaused', 'mod_aiactivities'),
+        get_string('aipaused_desc', 'mod_aiactivities'),
+        0
+    ));
+
     $settings->add(new admin_setting_heading(
         'mod_aiactivities/credits_heading',
         get_string('credits_heading', 'mod_aiactivities'),

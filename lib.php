@@ -398,6 +398,7 @@ function aiactivities_get_js_teacher_string_keys(): array {
         'js_delete_cancel', 'js_delete_confirm', 'js_delete_message',
         'js_delete_named', 'js_delete_title', 'js_delete_undo', 'js_deleted_notice',
         'js_err_deletefailed', 'js_err_restorefailed',
+        'js_review_released', 'js_review_release_failed',
     ];
     return array_merge($keys, $extrakeys);
 }
@@ -455,6 +456,7 @@ function aiactivities_get_js_string_map(): array {
         'js_types_notapplied', 'js_voiceover_controls',
         'js_voiceover_mute', 'js_voiceover_play', 'js_voiceover_stop', 'js_voiceover_stop_label',
         'js_voiceover_unmute',
+        'js_review_released', 'js_review_release_failed',
     ];
 
     return $shared + array_combine($samename, $samename);

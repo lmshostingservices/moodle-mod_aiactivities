@@ -10,7 +10,7 @@ reads each activity aloud.
 
 ## Requirements
 
-* Moodle 4.4 or later (supported through 5.2, MySQL/MariaDB and PostgreSQL).
+* Moodle 4.4 or later (supported through 5.3, MySQL/MariaDB and PostgreSQL). Tested on 4.5, 5.2 and 5.3.
 * PHP 8.1 or later.
 * An account with the AI Grader generation service, which supplies a site ID and API key.
 
@@ -54,10 +54,31 @@ step is required.
 | API URL | The base URL of the generation service. Leave at the default unless you have been given a different endpoint. |
 | Site ID | The identifier issued with your subscription. |
 | API key | The secret issued with your subscription. Stored write-only. |
+| Teacher checks AI activities before learners see them | On by default. A newly generated set stays hidden from learners until a teacher ticks that they have checked it and releases it. Who released it, and when, is recorded. |
+| Tell learners about AI | On by default. Learners see a short "Made with AI" notice naming the teacher who checked the set, with an "About AI here" explanation. |
+| Pause AI generation | Off by default. Stops all AI generation and narration on the site at once; released activities keep working. |
 
 If the optional `local_aiconfig` plugin (AI Grader Central Config) is installed, it holds the
 site ID and API key centrally for every AI Grader plugin and takes priority over the values
 stored here. `local_aiconfig` is optional: this plugin works without it.
+
+## Responsible AI and the EU AI Act
+
+AI Learning Activities uses AI to write practice activities (and optional narration) from content a
+teacher provides. It does not mark learners with AI or make decisions about them: answers are
+checked against the answer key the teacher released. Our classification and the features that
+support transparency and human oversight are set out in [docs/eu-ai-act.md](docs/eu-ai-act.md).
+In short:
+
+* **Check before release** (on by default): new sets wait for a teacher, who confirms they have
+  checked every question and answer before learners see them.
+* **Learner notice and machine-readable marker**: learners are told the activities were made with AI
+  and who checked them; the page carries a schema.org JSON-LD marker with the IPTC
+  `trainedAlgorithmicMedia` digital source type and `data-ai-generated` attributes (Article 50).
+* **Pause switch** for administrators, **"Using AI responsibly"** guidance for teachers (Article 4),
+  and Moodle log events for generation, release and removal of activities.
+
+This is the provider's technical analysis, not legal advice.
 
 ## Credits
 
