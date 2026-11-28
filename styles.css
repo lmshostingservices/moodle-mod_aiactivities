@@ -5574,7 +5574,7 @@ body.dark .ala-container {
     --mds-bg-feedback-info-subtle: #1c363e;
 }
 
-/* Programmatic focus (moving to a heading after an action) shows no ring for pointer users. */
-.ala-container [tabindex="-1"]:focus:not(:focus-visible) {
+/* Headings that receive programmatic focus (to announce a new activity) are not controls, so they show no ring. */
+.ala-container [tabindex="-1"]:focus {
     outline: none;
 }
