@@ -16,18 +16,26 @@
 
 namespace mod_aiactivities\aicoursebuilder;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * AI Course Builder adapter for AI Learning Activities.
+ *
  * @package    mod_aiactivities
  * @copyright  2026 LMS-Labs
- * @license    http://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 or later
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class generator {
+    /** @var string Component name registered with AI Course Builder. */
     private const COMPONENT = 'mod_aiactivities';
+
+    /** @var int Activities generated when the lesson length is unknown. */
     private const ACTIVITY_COUNT = 5;
 
+    /**
+     * Credits a lesson's set will cost on LMS Labs (2 per activity).
+     *
+     * @param array $brief The lesson brief from AI Course Builder.
+     * @return int
+     */
     public static function native_estimate(array $brief): int {
         return self::activity_count($brief) * 2;
     }
@@ -47,8 +55,18 @@ class generator {
         return max(3, min(8, (int)round($minutes / 12)));
     }
 
+    /**
+     * Starts generating a set for one lesson and returns the job id to poll.
+     *
+     * @param int $cmid The course module id of the Learning Activities instance.
+     * @param array $brief The lesson brief from AI Course Builder.
+     * @return string The job id.
+     */
     public static function native_generate(int $cmid, array $brief): string {
         self::load_native_helpers();
+        if (\mod_aiactivities\local\responsible_ai::is_paused()) {
+            throw new \moodle_exception('error_ai_paused', 'mod_aiactivities');
+        }
         [$siteid, $apikey] = \aiactivities_get_credentials();
         $ownai = \mod_aiactivities\byok::uses('text');
         if (!$ownai && ($siteid === '' || $apikey === '')) {
@@ -95,13 +113,27 @@ class generator {
             json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)
         );
         $decoded = json_decode((string)$response, true);
-        if ($curl->get_errno() || (int)($curl->get_info()['http_code'] ?? 0) !== 200
-                || empty($decoded['ok']) || empty($decoded['jobId'])) {
-            throw new \moodle_exception('generationfailed', 'local_aicoursebuilder', '', 'Learning Activities could not start generation.');
+        if (
+            $curl->get_errno() || (int)($curl->get_info()['http_code'] ?? 0) !== 200
+                || empty($decoded['ok']) || empty($decoded['jobId'])
+        ) {
+            throw new \moodle_exception(
+                'generationfailed',
+                'local_aicoursebuilder',
+                '',
+                'Learning Activities could not start generation.'
+            );
         }
         return clean_param((string)$decoded['jobId'], PARAM_ALPHANUMEXT);
     }
 
+    /**
+     * Polls a generation job and stores the set once it is done.
+     *
+     * @param int $cmid The course module id of the Learning Activities instance.
+     * @param string $jobid The job id from native_generate().
+     * @return array status, retryable and, when relevant, error or result.
+     */
     public static function native_status(int $cmid, string $jobid): array {
         self::load_native_helpers();
         global $DB;
@@ -134,7 +166,8 @@ class generator {
             return ['status' => 'blocked', 'retryable' => false, 'error' => 'Learning Activities job status is unavailable.'];
         }
         if (($payload['status'] ?? '') === 'error') {
-            return ['status' => 'failed', 'retryable' => false, 'error' => clean_param((string)($payload['error'] ?? 'Generation failed.'), PARAM_TEXT)];
+            $error = clean_param((string)($payload['error'] ?? 'Generation failed.'), PARAM_TEXT);
+            return ['status' => 'failed', 'retryable' => false, 'error' => $error];
         }
         if (($payload['status'] ?? '') !== 'done') {
             return ['status' => 'running', 'retryable' => false];
@@ -159,10 +192,28 @@ class generator {
         $update->voiceoverenabled = 0;
         $update->activitytypes = \mod_aiactivities\local\activity_types::ALL;
         $update->timemodified = time();
+        // Same responsible AI rule as the teacher flow: a new set waits for a teacher when the site asks for that.
+        \mod_aiactivities\local\responsible_ai::apply_new_set($update);
         $DB->update_record('aiactivities', $update);
+        $instance = $DB->get_record('aiactivities', ['id' => $instance->id], '*', MUST_EXIST);
+        \mod_aiactivities\local\responsible_ai::log_generated(
+            $instance,
+            \context_module::instance($cm->id),
+            count($activities),
+            \mod_aiactivities\byok::uses('text') ? 'ownai' : 'lmslabs',
+            $options['language'],
+            false
+        );
         return ['status' => 'complete', 'retryable' => false, 'result' => ['activitycount' => count($activities)]];
     }
 
+    /**
+     * Confirms the stored set matches what the job reported.
+     *
+     * @param int $cmid The course module id of the Learning Activities instance.
+     * @param array $result The result returned by native_status().
+     * @return void
+     */
     public static function native_save_result(int $cmid, array $result): void {
         global $DB;
         $cm = get_coursemodule_from_id('aiactivities', $cmid, 0, false, MUST_EXIST);
@@ -173,25 +224,55 @@ class generator {
         }
     }
 
+    /**
+     * Loads the libraries the native calls need.
+     *
+     * @return void
+     */
     private static function load_native_helpers(): void {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
         require_once($CFG->dirroot . '/mod/aiactivities/lib.php');
     }
 
+    /**
+     * Whether AI Course Builder is installed and knows this component.
+     *
+     * @return bool
+     */
     public static function is_available(): bool {
         return class_exists('\local_aicoursebuilder\local\generator_runtime')
             && \local_aicoursebuilder\local\generator_runtime::component_available(self::COMPONENT);
     }
 
+    /**
+     * Cost estimate through AI Course Builder's runtime.
+     *
+     * @param array $brief The lesson brief.
+     * @return int
+     */
     public static function estimate(array $brief): int {
         return \local_aicoursebuilder\local\generator_runtime::estimate(self::COMPONENT, $brief);
     }
 
+    /**
+     * Starts generation through AI Course Builder's runtime.
+     *
+     * @param int $cmid The course module id.
+     * @param array $brief The lesson brief.
+     * @return string The job id.
+     */
     public static function generate(int $cmid, array $brief): string {
         return \local_aicoursebuilder\local\generator_runtime::generate(self::COMPONENT, $cmid, $brief);
     }
 
+    /**
+     * Polls generation through AI Course Builder's runtime.
+     *
+     * @param int $cmid The course module id.
+     * @param string $jobid The job id.
+     * @return array
+     */
     public static function status(int $cmid, string $jobid): array {
         return \local_aicoursebuilder\local\generator_runtime::status(self::COMPONENT, $cmid, $jobid);
     }

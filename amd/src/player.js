@@ -45,6 +45,10 @@ define(['core/notification'], function(Notification) {
 
     // ========== LANGUAGE STRINGS ==========
 
+    /** MDS Button classes (Moodle Design System) for primary and secondary actions built in JavaScript. */
+    var BTN_PRIMARY = 'mds-btn btn btn-primary mds-btn--size-md ala-btn ala-btn-primary';
+    var BTN_SECONDARY = 'mds-btn btn btn-secondary mds-btn--size-md ala-btn ala-btn-outline';
+
     /**
      * Look up a user-facing string supplied by PHP in CONFIG.strings.
      *
@@ -1207,7 +1211,7 @@ define(['core/notification'], function(Notification) {
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.id = 'ala-next-btn';
-        btn.className = 'ala-btn ala-btn-primary ala-next-btn';
+        btn.className = BTN_PRIMARY + ' ala-next-btn';
         btn.textContent = label;
         btn.appendChild(nextArrowIcon());
         btn.addEventListener('click', function() {
@@ -2526,7 +2530,7 @@ define(['core/notification'], function(Notification) {
             html += '</div>';
 
             html += '<div class="ala-ordering-actions">';
-            html += '<button type="button" class="ala-btn ala-btn-primary" id="ala-check-order">' +
+            html += '<button type="button" class="' + BTN_PRIMARY + '" id="ala-check-order">' +
                 escapeHtml(str('check_btn', 'Check')) + '</button>';
             html += '</div>';
 
@@ -2712,7 +2716,7 @@ define(['core/notification'], function(Notification) {
             if (flipped) {
                 var isLast = currentCardIdx >= cards.length - 1;
                 html += '<div class="ala-flashcard-actions ala-fc-actions-appear">';
-                html += '<button type="button" class="ala-btn ala-btn-primary ala-fc-next-btn" ' +
+                html += '<button type="button" class="' + BTN_PRIMARY + ' ala-fc-next-btn" ' +
                     'id="ala-flashcard-next">';
                 if (isLast) {
                     html += '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" ' +
@@ -2950,7 +2954,7 @@ define(['core/notification'], function(Notification) {
                     html += '</div>';
 
                     html += '<div class="ala-tfs-buttons ala-tfs-continue-row">';
-                    html += '<button type="button" class="ala-btn ala-btn-primary" id="ala-tfs-continue">';
+                    html += '<button type="button" class="' + BTN_PRIMARY + '" id="ala-tfs-continue">';
                     html += escapeHtml(currentStmtIdx < statements.length - 1
                         ? str('next_btn', 'Next')
                         : str('flashcard_done', 'Done'));
@@ -3130,7 +3134,7 @@ define(['core/notification'], function(Notification) {
             }
             if (allFilled) {
                 html += '<div class="ala-fib-actions">';
-                html += '<button type="button" class="ala-btn ala-btn-primary" id="ala-fib-check">' +
+                html += '<button type="button" class="' + BTN_PRIMARY + '" id="ala-fib-check">' +
                     escapeHtml(str('check_btn', 'Check')) + '</button>';
                 html += '</div>';
             }
@@ -3874,9 +3878,9 @@ define(['core/notification'], function(Notification) {
         html += buildEditTypeFields(activity);
 
         html += '<div class="ala-edit-actions">';
-        html += '<button type="button" id="ala-edit-save-btn" class="ala-btn ala-btn-primary">' +
+        html += '<button type="button" id="ala-edit-save-btn" class="' + BTN_PRIMARY + '">' +
             escapeHtml(str('js_edit_save', 'Save Changes')) + '</button>';
-        html += '<button type="button" id="ala-edit-cancel-btn" class="ala-btn ala-btn-outline">' +
+        html += '<button type="button" id="ala-edit-cancel-btn" class="' + BTN_SECONDARY + '">' +
             escapeHtml(str('js_edit_cancel', 'Cancel')) + '</button>';
         html += '</div>';
         html += '</div>';
@@ -5195,6 +5199,74 @@ define(['core/notification'], function(Notification) {
         }
     }
 
+    // ========== RESPONSIBLE AI ==========
+
+    /**
+     * Wire the review panel: the teacher confirms they have checked the AI-generated set, then releases it.
+     *
+     * @return {void}
+     */
+    function initReviewPanel() {
+        var ack = document.getElementById('ala-review-ack');
+        var releaseBtn = document.getElementById('ala-release-btn');
+        if (!ack || !releaseBtn) {
+            return;
+        }
+        ack.addEventListener('change', function() {
+            releaseBtn.disabled = !ack.checked;
+        });
+        releaseBtn.addEventListener('click', function() {
+            if (!ack.checked || releaseBtn.disabled) {
+                return;
+            }
+            releaseBtn.disabled = true;
+            ack.disabled = true;
+            ajaxCall('releaseset', {acknowledged: 1}, function(result) {
+                if (result && result.ok) {
+                    var awaiting = document.getElementById('ala-review-awaiting');
+                    var released = document.getElementById('ala-review-released');
+                    var releasedText = document.getElementById('ala-review-released-text');
+                    if (releasedText) {
+                        releasedText.textContent = result.reviewnotice ||
+                            str('js_review_released', 'Released to learners.');
+                    }
+                    if (awaiting) {
+                        awaiting.hidden = true;
+                    }
+                    if (released) {
+                        released.hidden = false;
+                        released.setAttribute('tabindex', '-1');
+                        released.focus();
+                    }
+                    return;
+                }
+                releaseBtn.disabled = false;
+                ack.disabled = false;
+                notifyError((result && result.error) ||
+                    str('js_review_release_failed', 'The activities could not be released.'));
+            });
+        });
+    }
+
+    /**
+     * Wire the "About AI here" link in the learner AI notice.
+     *
+     * @return {void}
+     */
+    function initAiNotice() {
+        var link = document.querySelector('[data-action="ala-ai-about"]');
+        var panel = document.getElementById('ala-ai-about');
+        if (!link || !panel) {
+            return;
+        }
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            var open = panel.hidden;
+            panel.hidden = !open;
+            link.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+    }
+
     return {
         /**
          * Entry point called by $PAGE->requires->js_call_amd().
@@ -5216,9 +5288,11 @@ define(['core/notification'], function(Notification) {
             isTouchDevice = (('ontouchstart' in window) ||
                 (window.matchMedia && window.matchMedia('(pointer: coarse)').matches));
 
+            initAiNotice();
             if (CONFIG.cancreate) {
                 bindSectionToggles();
                 initTeacherForm();
+                initReviewPanel();
             } else if (CONFIG.hasactivities) {
                 initStudentPlayer();
             }

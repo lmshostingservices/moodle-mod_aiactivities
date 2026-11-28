@@ -68,6 +68,22 @@ class renderer extends plugin_renderer_base {
     private const WORKER_LEVELS = ['Worker', 'Supervisor', 'Manager', 'Executive'];
 
     /**
+     * Font Awesome icon for each activity type on the visual type picker.
+     *
+     * @var string[]
+     */
+    private const TYPE_ICONS = [
+        'cardselect' => 'fa-clone',
+        'truefalseswipe' => 'fa-left-right',
+        'fillinblank' => 'fa-i-cursor',
+        'matching' => 'fa-link',
+        'ordering' => 'fa-arrow-down-1-9',
+        'columnsort' => 'fa-table-columns',
+        'categorysort' => 'fa-layer-group',
+        'flashcards' => 'fa-note-sticky',
+    ];
+
+    /**
      * Renders the generation and management interface shown to teachers.
      *
      * @param \stdClass $instance The aiactivities instance record.
@@ -75,6 +91,7 @@ class renderer extends plugin_renderer_base {
      * @return string HTML.
      */
     public function render_teacher_interface(\stdClass $instance, bool $hasactivities): string {
+        $released = \mod_aiactivities\local\responsible_ai::is_released($instance);
         $context = [
             'hasactivities' => $hasactivities,
             'voiceoverenabled' => !empty($instance->voiceoverenabled),
@@ -87,6 +104,13 @@ class renderer extends plugin_renderer_base {
                 $instance->activitytypes ?? \mod_aiactivities\local\activity_types::ALL
             ),
             'ownai' => $this->own_ai(),
+            'paused' => \mod_aiactivities\local\responsible_ai::is_paused(),
+            'review' => [
+                'required' => \mod_aiactivities\local\responsible_ai::requires_review(),
+                'awaiting' => $hasactivities && !$released,
+                'released' => $hasactivities && $released,
+                'message' => $released ? \mod_aiactivities\local\responsible_ai::teacher_status_message($instance) : '',
+            ],
         ];
 
         return $this->render_from_template('mod_aiactivities/teacher_interface', $context);
@@ -130,6 +154,8 @@ class renderer extends plugin_renderer_base {
             $options[] = [
                 'value' => $type,
                 'label' => get_string(\mod_aiactivities\local\activity_types::label_key($type), 'mod_aiactivities'),
+                'description' => get_string('typedesc_' . $type, 'mod_aiactivities'),
+                'icon' => self::TYPE_ICONS[$type] ?? 'fa-shapes',
                 'checked' => in_array($type, $selected, true),
             ];
         }
@@ -140,10 +166,11 @@ class renderer extends plugin_renderer_base {
     /**
      * Renders the activity player shown to students.
      *
+     * @param array $notice Context for the AI notice and marker (responsible_ai::notice_context()).
      * @return string HTML.
      */
-    public function render_player(): string {
-        return $this->render_from_template('mod_aiactivities/player', []);
+    public function render_player(array $notice = []): string {
+        return $this->render_from_template('mod_aiactivities/player', ['notice' => $notice ?: null]);
     }
 
     /**

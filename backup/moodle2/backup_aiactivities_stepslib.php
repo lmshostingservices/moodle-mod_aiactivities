@@ -38,7 +38,8 @@ class backup_aiactivities_activity_structure_step extends backup_activity_struct
             'name', 'intro', 'introformat', 'grade',
             'content', 'language', 'activitycount', 'activitiesjson',
             'completionallcorrect', 'voiceoverenabled', 'voicegender', 'voiceid',
-            'activitytypes', 'timecreated', 'timemodified',
+            'activitytypes', 'reviewstatus', 'reviewedby', 'timereviewed', 'timegenerated',
+            'timecreated', 'timemodified',
         ];
         $aiactivities = new backup_nested_element('aiactivities', ['id'], $instancefields);
 
@@ -59,6 +60,7 @@ class backup_aiactivities_activity_structure_step extends backup_activity_struct
             $attempt->set_source_table('aiactivities_attempts', ['aiactivitiesid' => backup::VAR_PARENTID], 'id ASC');
         }
 
+        $aiactivities->annotate_ids('user', 'reviewedby');
         $attempt->annotate_ids('user', 'userid');
 
         return $this->prepare_activity_structure($aiactivities);

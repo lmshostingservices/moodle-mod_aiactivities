@@ -113,5 +113,24 @@ function xmldb_aiactivities_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026102300, 'aiactivities');
     }
 
+    if ($oldversion < 2026112800) {
+        // Release 1.13.0 (responsible AI, EU AI Act): a generated set can wait for a teacher to check it
+        // before learners see it. Every existing set is already live, so it stays released.
+        $table = new xmldb_table('aiactivities');
+        $fields = [
+            new xmldb_field('reviewstatus', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '1', 'activitytypes'),
+            new xmldb_field('reviewedby', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'reviewstatus'),
+            new xmldb_field('timereviewed', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'reviewedby'),
+            new xmldb_field('timegenerated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timereviewed'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+
+        upgrade_mod_savepoint(true, 2026112800, 'aiactivities');
+    }
+
     return true;
 }

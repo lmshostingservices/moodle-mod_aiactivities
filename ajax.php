@@ -48,9 +48,28 @@ require_capability('mod/aiactivities:view', $context);
 
 // Actions that change generated content and are limited to users who may create it.
 $createactions = ['generate', 'generate_async', 'poll_job', 'save_generated', 'savevoicesettings',
-    'regenerateaudio', 'saveactivity', 'deleteactivity', 'restoreactivity', 'getcredits'];
+    'regenerateaudio', 'saveactivity', 'deleteactivity', 'restoreactivity', 'getcredits', 'releaseset'];
 if (in_array($action, $createactions, true)) {
     require_capability('mod/aiactivities:create', $context);
+}
+
+// Responsible AI: an administrator can pause all AI generation on the site. Existing activities keep working.
+$aiactions = ['generate', 'generate_async', 'regenerateaudio'];
+if (in_array($action, $aiactions, true) && \mod_aiactivities\local\responsible_ai::is_paused()) {
+    header('Content-Type: application/json');
+    echo json_encode(['ok' => false, 'error' => get_string('error_ai_paused', 'mod_aiactivities'), 'paused' => true]);
+    die();
+}
+
+// Learners only work on a set once a teacher has released it.
+$learneractions = ['startattempt', 'saveprogress', 'complete'];
+if (
+    in_array($action, $learneractions, true) && !\mod_aiactivities\local\responsible_ai::is_released($instance)
+        && !has_capability('mod/aiactivities:create', $context)
+) {
+    header('Content-Type: application/json');
+    echo json_encode(['ok' => false, 'error' => get_string('awaiting_review_learner', 'mod_aiactivities')]);
+    die();
 }
 
 $apibase = aiactivities_get_api_base();
@@ -165,13 +184,20 @@ switch ($action) {
 
         if ($httpcode === 200 && $result && !empty($result['ok']) && !empty($result['activities'])) {
             [$activities, $typesapplied] = aiactivities_apply_type_filter($result['activities'], $options['activitytypes']);
-            aiactivities_store_activities($instance->id, $activities, $content, $options);
+            aiactivities_store_activities(
+                $instance->id,
+                $activities,
+                $content,
+                $options,
+                $context,
+                $ownai['text'] ? 'ownai' : 'lmslabs'
+            );
             $success = [
                 'ok' => true,
                 'activities' => $activities,
                 'creditsUsed' => $result['creditsUsed'] ?? 0,
                 'typesapplied' => $typesapplied,
-            ];
+            ] + aiactivities_review_state($instance->id);
             echo json_encode($success);
         } else {
             $failure = [
@@ -271,9 +297,17 @@ switch ($action) {
         $options = aiactivities_read_generation_options();
 
         [$activities, $typesapplied] = aiactivities_apply_type_filter($activities, $options['activitytypes']);
-        aiactivities_store_activities($instance->id, $activities, $content, $options);
+        aiactivities_store_activities(
+            $instance->id,
+            $activities,
+            $content,
+            $options,
+            $context,
+            $ownai['text'] ? 'ownai' : 'lmslabs'
+        );
 
-        echo json_encode(['ok' => true, 'activities' => $activities, 'typesapplied' => $typesapplied]);
+        echo json_encode(['ok' => true, 'activities' => $activities, 'typesapplied' => $typesapplied]
+            + aiactivities_review_state($instance->id));
         break;
 
     case 'savevoicesettings':
@@ -439,6 +473,12 @@ switch ($action) {
 
         $transaction->allow_commit();
 
+        \mod_aiactivities\event\activity_removed::create([
+            'objectid' => $instance->id,
+            'context' => $context,
+            'other' => ['activitycount' => count($allactivities), 'position' => $activityindex + 1],
+        ])->trigger();
+
         echo json_encode([
             'ok' => true,
             'removed' => $removed,
@@ -510,6 +550,21 @@ switch ($action) {
         $transaction->allow_commit();
 
         echo json_encode(['ok' => true, 'activities' => $allactivities, 'attemptsupdated' => $attempts]);
+        break;
+
+    case 'releaseset':
+        // A teacher confirms they have checked the AI-generated set, and releases it to learners.
+        $acknowledged = optional_param('acknowledged', 0, PARAM_BOOL);
+        if (!$acknowledged) {
+            echo json_encode(['ok' => false, 'error' => get_string('release_ack_required', 'mod_aiactivities')]);
+            break;
+        }
+        if (empty($instance->activitiesjson)) {
+            echo json_encode(['ok' => false, 'error' => get_string('error_no_activities', 'mod_aiactivities')]);
+            break;
+        }
+        $instance = \mod_aiactivities\local\responsible_ai::release($instance, $cm, $context, (int)$USER->id);
+        echo json_encode(['ok' => true] + aiactivities_review_state($instance->id));
         break;
 
     case 'startattempt':
@@ -774,13 +829,17 @@ function aiactivities_apply_type_filter(array $activities, array $types): array 
  * @param array $activities The generated activities.
  * @param string $content The learning content used, or an empty string to keep the stored one.
  * @param array $options Options as returned by aiactivities_read_generation_options().
+ * @param \context_module|null $context The module context, to record the generation in the log.
+ * @param string $engine Which AI wrote the set: lmslabs or ownai.
  * @return void
  */
 function aiactivities_store_activities(
     int $instanceid,
     array $activities,
     string $content,
-    array $options
+    array $options,
+    ?\context_module $context = null,
+    string $engine = 'lmslabs'
 ): void {
     global $DB;
 
@@ -801,5 +860,35 @@ function aiactivities_store_activities(
         $update->voiceid = $options['voiceid'];
     }
 
+    // A new set is AI output nobody has checked yet: it waits for a teacher when the site asks for that.
+    \mod_aiactivities\local\responsible_ai::apply_new_set($update);
     $DB->update_record('aiactivities', $update);
+
+    if ($context !== null) {
+        $instance = $DB->get_record('aiactivities', ['id' => $instanceid], '*', MUST_EXIST);
+        \mod_aiactivities\local\responsible_ai::log_generated(
+            $instance,
+            $context,
+            count($activities),
+            $engine,
+            (string)$options['language'],
+            !empty($options['voiceoverenabled'])
+        );
+    }
+}
+
+/**
+ * The review state of an instance, for the teacher interface.
+ *
+ * @param int $instanceid The aiactivities instance id.
+ * @return array released (bool) and reviewnotice (string).
+ */
+function aiactivities_review_state(int $instanceid): array {
+    global $DB;
+
+    $instance = $DB->get_record('aiactivities', ['id' => $instanceid], '*', MUST_EXIST);
+    $released = \mod_aiactivities\local\responsible_ai::is_released($instance);
+    $message = $released ? \mod_aiactivities\local\responsible_ai::teacher_status_message($instance) : '';
+
+    return ['released' => $released, 'reviewnotice' => $message];
 }

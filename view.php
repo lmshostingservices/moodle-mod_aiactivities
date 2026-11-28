@@ -83,16 +83,27 @@ if (!empty($instance->activitiesjson)) {
     }
 }
 $hasactivities = ($activities !== null);
+$released = \mod_aiactivities\local\responsible_ai::is_released($instance);
 
 /** @var \mod_aiactivities\output\renderer $renderer */
 $renderer = $PAGE->get_renderer('mod_aiactivities');
 
 if ($cancreate) {
     echo $renderer->render_teacher_interface($instance, $hasactivities);
+} else if ($hasactivities && $released) {
+    $narrated = !empty($instance->voiceoverenabled) && \mod_aiactivities\local\responsible_ai::has_narration($activities);
+    echo $renderer->render_player(\mod_aiactivities\local\responsible_ai::notice_context($instance, $narrated));
 } else if ($hasactivities) {
-    echo $renderer->render_player();
+    echo $OUTPUT->notification(get_string('awaiting_review_learner', 'mod_aiactivities'), 'info');
 } else {
     echo $OUTPUT->notification(get_string('no_activities_yet', 'mod_aiactivities'), 'info');
+}
+
+// Learners never receive a set a teacher has not released yet.
+$learnerblocked = !$cancreate && !$released;
+if ($learnerblocked) {
+    $hasactivities = false;
+    $activities = null;
 }
 
 $config = [

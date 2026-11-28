@@ -58,6 +58,12 @@ class provider implements
         ];
         $collection->add_database_table('aiactivities_attempts', $attemptfields, 'privacy:metadata:attempts');
 
+        // Responsible AI: the teacher who checked and released an AI-generated set is recorded on the instance.
+        $collection->add_database_table('aiactivities', [
+            'reviewedby' => 'privacy:metadata:aiactivities:reviewedby',
+            'timereviewed' => 'privacy:metadata:aiactivities:timereviewed',
+        ], 'privacy:metadata:aiactivities');
+
         // Teachers send learning content to the configured generation service so
         // that activities can be produced from it. No student data is sent.
         $servicefields = [
@@ -103,6 +109,14 @@ class provider implements
         ];
         $contextlist->add_from_sql($sql, $sqlparams);
 
+        $sql = "SELECT ctx.id
+                  FROM {context} ctx
+                  JOIN {course_modules} cm ON cm.id = ctx.instanceid AND ctx.contextlevel = :contextlevel
+                  JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+                  JOIN {aiactivities} a ON a.id = cm.instance
+                 WHERE a.reviewedby = :userid";
+        $contextlist->add_from_sql($sql, $sqlparams);
+
         return $contextlist;
     }
 
@@ -126,6 +140,13 @@ class provider implements
                  WHERE cm.id = :cmid";
 
         $userlist->add_from_sql('userid', $sql, ['modname' => 'aiactivities', 'cmid' => $context->instanceid]);
+
+        $sql = "SELECT a.reviewedby
+                  FROM {aiactivities} a
+                  JOIN {course_modules} cm ON cm.instance = a.id
+                  JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+                 WHERE cm.id = :cmid AND a.reviewedby > 0";
+        $userlist->add_from_sql('reviewedby', $sql, ['modname' => 'aiactivities', 'cmid' => $context->instanceid]);
     }
 
     /**
@@ -151,6 +172,17 @@ class provider implements
             $cm = get_coursemodule_from_id('aiactivities', $context->instanceid);
             if (!$cm) {
                 continue;
+            }
+
+            $reviewed = $DB->get_record('aiactivities', ['id' => $cm->instance, 'reviewedby' => $user->id]);
+            if ($reviewed) {
+                writer::with_context($context)->export_data(
+                    [get_string('privacy:path:review', 'mod_aiactivities')],
+                    (object)[
+                        'reviewedby' => get_string('privacy_you', 'mod_aiactivities'),
+                        'timereviewed' => $reviewed->timereviewed ? transform::datetime($reviewed->timereviewed) : null,
+                    ]
+                );
             }
 
             $conditions = [
@@ -201,6 +233,8 @@ class provider implements
         $cm = get_coursemodule_from_id('aiactivities', $context->instanceid);
         if ($cm) {
             $DB->delete_records('aiactivities_attempts', ['aiactivitiesid' => $cm->instance]);
+            // The set stays released; only the reviewer's identity is removed.
+            $DB->set_field('aiactivities', 'reviewedby', 0, ['id' => $cm->instance]);
         }
     }
 
@@ -227,6 +261,7 @@ class provider implements
                     'userid' => $userid,
                 ];
                 $DB->delete_records('aiactivities_attempts', $conditions);
+                $DB->set_field('aiactivities', 'reviewedby', 0, ['id' => $cm->instance, 'reviewedby' => $userid]);
             }
         }
     }
@@ -263,5 +298,7 @@ class provider implements
             "aiactivitiesid = :aiactivitiesid AND userid $insql",
             $inparams
         );
+
+        $DB->set_field_select('aiactivities', 'reviewedby', 0, "id = :aiactivitiesid AND reviewedby $insql", $inparams);
     }
 }

@@ -36,18 +36,18 @@ use mod_aiactivities\local\byok\http_error;
  */
 class byok {
     /** Plugin component, as AI Connect knows it. */
-    const COMPONENT = 'mod_aiactivities';
+    public const COMPONENT = 'mod_aiactivities';
     /** Seconds the site's AI may take to write a set of activities. */
-    const TEXT_TIMEOUT = 300;
+    public const TEXT_TIMEOUT = 300;
     /** Speaking rate the service narrates at. */
-    const SPEAKING_RATE = 0.92;
+    public const SPEAKING_RATE = 0.92;
     /** Job ids of generations running on the site's own AI start with this. */
-    const JOB_PREFIX = 'byok';
+    public const JOB_PREFIX = 'byok';
     /** The closest OpenAI voice to each Google Chirp 3 HD voice the activity offers. */
-    const OPENAI_VOICES = ['Aoede' => 'nova', 'Kore' => 'shimmer', 'Leda' => 'coral', 'Zephyr' => 'sage',
+    public const OPENAI_VOICES = ['Aoede' => 'nova', 'Kore' => 'shimmer', 'Leda' => 'coral', 'Zephyr' => 'sage',
         'Puck' => 'onyx', 'Charon' => 'echo', 'Fenrir' => 'ash', 'Orus' => 'ballad'];
     /** What the routes need in siteId and apiKey when nothing goes to LMS Labs. */
-    const NO_CREDENTIALS = 'byok';
+    public const NO_CREDENTIALS = 'byok';
 
     /**
      * Whether a kind of work runs on the site's own AI now.
